@@ -1,0 +1,11 @@
+COMO ABRIR E USAR NO ANDROID (SEM PRECISAR DE PC):
+
+1. Extraia o arquivo "SpotifyAnalytics_Android.html" deste pacote .zip no gerenciador de arquivos do seu Android.
+2. Toque sobre "SpotifyAnalytics_Android.html" e selecione abrir com o "Google Chrome" (ou seu navegador do celular).
+3. COMO TRANSFORMAR EM APLICATIVO NA TELA INICIAL DO ANDROID:
+   - Com ele aberto no Chrome do Android, toque nos 3 pontinhos (canto superior direito) e escolha "Adicionar à tela inicial".
+   - Ele criará um ícone na tela inicial do seu Android e abrirá em tela cheia, igual a um aplicativo instalado!
+4. COMO IMPORTAR SEUS DADOS DO SPOTIFY NO ANDROID:
+   - Toque na aba "Importar" na barra inferior do aplicativo.
+   - Você pode selecionar tanto os arquivos "Streaming_History_Audio_*.json" quanto o próprio arquivo ".zip" original que o Spotify envia por e-mail!
+   - Todos os seus plays (mesmo mais de 100.000 reproduções) ficam salvos localmente no banco IndexedDB do seu Android.

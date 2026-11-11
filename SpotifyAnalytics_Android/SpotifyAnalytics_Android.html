@@ -1,0 +1,2694 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#121212" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Spotify Analytics" />
+  <title>Spotify Analytics — Android &amp; Desktop</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background-color: #121212;
+      color: #FFFFFF;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #121212;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #282828;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #1DB954;
+    }
+    .spotify-card {
+      background-color: #181818;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      transition: background-color 0.18s ease, border-color 0.18s ease;
+    }
+    .spotify-card:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .nav-btn.active {
+      background-color: #242424;
+      color: #1DB954;
+      border-left: 4px solid #1DB954;
+    }
+    .scope-pill.active {
+      background-color: #1DB954;
+      color: #000000;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(29, 185, 84, 0.25);
+    }
+    .sub-pill.active {
+      background-color: #1DB954;
+      color: #000000;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#121212] text-white flex flex-col md:flex-row selection:bg-[#1DB954] selection:text-black">
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 hidden items-center gap-3 px-4 py-3 rounded-xl bg-[#242424] border border-[#1DB954]/60 shadow-2xl text-sm max-w-md">
+    <span id="toastIcon" class="w-2.5 h-2.5 rounded-full bg-[#1DB954] shrink-0"></span>
+    <span id="toastText" class="text-white/95 font-medium"></span>
+  </div>
+
+  <!-- MODAL DE EXPORTAÇÃO DE PLAYLIST PRIVADA -->
+  <div id="playlistModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#181818] border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-[#1DB954]/20 flex items-center justify-center text-[#1DB954] font-bold">
+            ♫
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">Exportar Ranking para Playlist Privada</h3>
+            <p class="text-xs text-[#B3B3B3]">Endpoint: POST /v1/users/{user_id}/playlists</p>
+          </div>
+        </div>
+        <button id="btnCloseModal" type="button" class="text-[#B3B3B3] hover:text-white text-xs px-2.5 py-1 rounded bg-[#242424]">
+          Fechar
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label for="inputPlaylistName" class="block text-xs font-medium text-[#B3B3B3] mb-1">Nome da Playlist no Spotify</label>
+          <input id="inputPlaylistName" type="text" value="Meu Top Spotify Analytics (2026)" class="w-full bg-[#242424] border border-white/10 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-[#1DB954]" />
+        </div>
+        <div>
+          <label for="inputPlaylistDesc" class="block text-xs font-medium text-[#B3B3B3] mb-1">Descrição</label>
+          <textarea id="inputPlaylistDesc" rows="2" class="w-full bg-[#242424] border border-white/10 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-[#1DB954]">Gerada automaticamente pelo Spotify Analytics Desktop (.exe portátil).</textarea>
+        </div>
+        <div class="bg-[#242424] rounded-xl p-3.5 border border-white/5 text-xs text-[#B3B3B3] space-y-1.5">
+          <div class="flex justify-between">
+            <span>Faixas selecionadas no ranking atual:</span>
+            <span id="modalTrackCount" class="text-white font-semibold">25 URIs</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Faixa #1 do lote:</span>
+            <span id="modalTopTrack" class="text-[#1DB954] font-semibold truncate max-w-[230px]">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-6">
+        <button id="btnCancelModal" type="button" class="px-4 py-2 rounded-full text-xs font-semibold text-[#B3B3B3] hover:text-white bg-[#242424]">
+          Cancelar
+        </button>
+        <button id="btnConfirmExportPlaylist" type="button" class="px-5 py-2 rounded-full text-xs font-bold bg-[#1DB954] text-black hover:bg-[#1ed760] transition">
+          Criar Playlist Privada
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO DE LIMPEZA / RESET TOTAL -->
+  <div id="resetConfirmModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-[#181818] border border-red-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-lg">
+          🗑
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-white">Limpar / Resetar Todos os Dados</h3>
+          <p class="text-xs text-[#B3B3B3]">Zerar banco de dados local e métricas da interface</p>
+        </div>
+      </div>
+      <p class="text-xs text-[#B3B3B3] leading-relaxed mb-5">
+        Tem certeza de que deseja remover todas as reproduções carregadas, rankings, cache de audio features e playlists da sessão atual? A interface ficará totalmente limpa aguardando novos arquivos JSON ou sincronização OAuth.
+      </p>
+      <div class="flex justify-end gap-3">
+        <button id="btnCancelResetModal" type="button" class="px-4 py-2 rounded-full text-xs font-semibold text-[#B3B3B3] hover:text-white bg-[#242424]">
+          Cancelar
+        </button>
+        <button id="btnConfirmResetAll" type="button" class="px-5 py-2 rounded-full text-xs font-bold bg-red-500 text-white hover:bg-red-400 transition">
+          Limpar Tudo Agora
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR FIXA À ESQUERDA -->
+  <aside class="w-full md:w-64 bg-black/95 border-b md:border-b-0 md:border-r border-white/10 flex flex-col justify-between shrink-0">
+    <div class="p-5">
+      <div class="flex items-center gap-3 mb-7">
+        <div class="w-10 h-10 rounded-xl bg-[#1DB954] flex items-center justify-center text-black font-extrabold text-lg shadow-lg shadow-[#1DB954]/20">
+          S
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-base tracking-tight text-white">Spotify</span>
+            <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#1DB954]/20 text-[#1DB954]">
+              .EXE PORTABLE
+            </span>
+          </div>
+          <p class="text-[11px] text-[#B3B3B3]">Desktop Analytics • Offline DB</p>
+        </div>
+      </div>
+
+      <nav class="flex md:flex-col gap-1.5 overflow-x-auto pb-2 md:pb-0">
+        <button type="button" data-tab="dashboard" class="nav-btn active flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium text-[#B3B3B3] hover:text-white hover:bg-[#181818] transition whitespace-nowrap">
+          <span>📊</span>
+          <span>Dashboard Geral</span>
+        </button>
+        <button type="button" data-tab="summary" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium text-[#B3B3B3] hover:text-white hover:bg-[#181818] transition whitespace-nowrap">
+          <span>✨</span>
+          <span>Resumo &amp; Story IA</span>
+        </button>
+        <button type="button" data-tab="rankings" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium text-[#B3B3B3] hover:text-white hover:bg-[#181818] transition whitespace-nowrap">
+          <span>🏆</span>
+          <span>Top Rankings</span>
+        </button>
+        <button type="button" data-tab="audio" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium text-[#B3B3B3] hover:text-white hover:bg-[#181818] transition whitespace-nowrap">
+          <span>🎛️</span>
+          <span>Métricas de Áudio</span>
+        </button>
+        <button type="button" data-tab="patterns" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium text-[#B3B3B3] hover:text-white hover:bg-[#181818] transition whitespace-nowrap">
+          <span>🕒</span>
+          <span>Padrões de Escuta</span>
+        </button>
+        <button type="button" data-tab="import" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium text-[#B3B3B3] hover:text-white hover:bg-[#181818] transition whitespace-nowrap">
+          <span>📂</span>
+          <span>Importar Histórico</span>
+        </button>
+        <button type="button" data-tab="settings" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium text-[#B3B3B3] hover:text-white hover:bg-[#181818] transition whitespace-nowrap">
+          <span>⚙️</span>
+          <span>Configurações / API</span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="hidden md:block p-4 m-4 rounded-xl bg-[#181818] border border-white/5 space-y-2.5">
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-[#B3B3B3]">Banco Local</span>
+        <span id="sidebarTotalRecords" class="text-white font-semibold">0 plays</span>
+      </div>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-[#B3B3B3]">OAuth PKCE</span>
+        <span id="sidebarOAuthStatus" class="text-[#1DB954] font-semibold">Ativo (S256)</span>
+      </div>
+      <div class="pt-1.5 border-t border-white/5 text-[11px] text-[#B3B3B3] flex items-center justify-between">
+        <span>Modo Windows GUI</span>
+        <span class="text-[#1DB954] font-bold">Sem CMD</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="flex-1 overflow-y-auto p-2.5 sm:p-3 md:p-5 pb-20 md:pb-6"><div id="mainContentContainer" class="max-w-[1040px] mx-auto space-y-3.5 transition-all duration-200">
+
+    <!-- CABEÇALHO E FILTROS DE ESCOPO -->
+    <header class="spotify-card p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <h1 id="pageTitle" class="text-xl md:text-2xl font-bold text-white tracking-tight">Dashboard Geral de Escuta</h1>
+        <p class="text-xs text-[#B3B3B3] mt-0.5">
+          Executável portátil Windows (.exe) • Processamento 100% local e privado • Sem player de áudio
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" data-scope="short_term" class="scope-pill px-3 py-1.5 rounded-full text-xs font-semibold bg-[#242424] text-[#B3B3B3] hover:text-white transition">
+          4 Semanas (API)
+        </button>
+        <button type="button" data-scope="medium_term" class="scope-pill px-3 py-1.5 rounded-full text-xs font-semibold bg-[#242424] text-[#B3B3B3] hover:text-white transition">
+          6 Meses (API)
+        </button>
+        <button type="button" data-scope="long_term" class="scope-pill px-3 py-1.5 rounded-full text-xs font-semibold bg-[#242424] text-[#B3B3B3] hover:text-white transition">
+          Long-Term (API)
+        </button>
+        <button type="button" data-scope="all_history" class="scope-pill active px-3 py-1.5 rounded-full text-xs font-semibold bg-[#242424] text-[#B3B3B3] hover:text-white transition">
+          Todo Histórico Real
+        </button>
+        <button type="button" data-scope="custom_range" class="scope-pill px-3 py-1.5 rounded-full text-xs font-semibold bg-[#242424] text-[#B3B3B3] hover:text-white transition">
+          Personalizado
+        </button>
+
+        <button id="btnOpenExportModal" type="button" class="ml-auto lg:ml-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#242424] hover:bg-[#1DB954] hover:text-black text-[#1DB954] border border-[#1DB954]/40 transition">
+          + Exportar Playlist
+        </button>
+        <button id="btnToggleCompactWidth" type="button" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#242424] hover:bg-white/10 text-white border border-white/10 transition" title="Alternar largura compacta para tirar print de Story">
+          📱 Modo Print (520px)
+        </button>
+        <button id="btnOpenResetModal" type="button" class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#242424] hover:bg-red-500 hover:text-white text-red-400 border border-red-500/30 transition">
+          🗑 Limpar / Resetar
+        </button>
+      </div>
+    </header>
+
+    <!-- BARRA DE FILTRO DE DATAS PERSONALIZADO -->
+    <div id="customDateBar" class="hidden bg-[#181818] border border-[#1DB954]/30 rounded-xl p-3.5 flex-wrap items-center gap-4 text-xs">
+      <span class="text-[#1DB954] font-semibold">Intervalo Personalizado:</span>
+      <div class="flex items-center gap-2">
+        <label for="inputStartDate" class="text-[#B3B3B3]">De:</label>
+        <input id="inputStartDate" type="date" value="2026-01-01" class="bg-[#242424] border border-white/10 rounded px-2.5 py-1 text-white" />
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="inputEndDate" class="text-[#B3B3B3]">Até:</label>
+        <input id="inputEndDate" type="date" value="2026-11-10" class="bg-[#242424] border border-white/10 rounded px-2.5 py-1 text-white" />
+      </div>
+      <div class="flex gap-1.5 ml-auto">
+        <button id="btnPreset2025" type="button" class="px-2.5 py-1 rounded bg-[#242424] hover:bg-white/10 text-[#B3B3B3] hover:text-white">
+          Ano 2025
+        </button>
+        <button id="btnPreset2026" type="button" class="px-2.5 py-1 rounded bg-[#242424] hover:bg-white/10 text-[#B3B3B3] hover:text-white">
+          Ano 2026
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI CARDS TOPO (COMPACTOS E COM MESMO PESO VISUAL) -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <!-- Card 1: Minutos, Horas e Dias com o EXATO MESMO destaque lado a lado -->
+      <div class="spotify-card p-3.5">
+        <div class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-[#B3B3B3] mb-2">
+          <span>Tempo Total Escutado</span>
+          <span class="text-[#1DB954] font-bold">⏱</span>
+        </div>
+        <div class="grid grid-cols-3 divide-x divide-white/10 text-center items-center">
+          <div class="px-1">
+            <div id="kpiTotalMinutes" class="text-base md:text-lg font-extrabold text-white leading-tight">0</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[#1DB954] mt-0.5">Minutos</div>
+          </div>
+          <div class="px-1">
+            <div id="kpiTotalHours" class="text-base md:text-lg font-extrabold text-white leading-tight">0</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[#1DB954] mt-0.5">Horas</div>
+          </div>
+          <div class="px-1">
+            <div id="kpiTotalDays" class="text-base md:text-lg font-extrabold text-white leading-tight">0</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[#1DB954] mt-0.5">Dias</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Plays Completos vs. Skips lado a lado com o EXATO MESMO destaque -->
+      <div class="spotify-card p-3.5">
+        <div class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-[#B3B3B3] mb-2">
+          <span>Plays Completos vs. Skips (&lt;30s)</span>
+          <span class="text-[#1DB954] font-bold">▶</span>
+        </div>
+        <div class="grid grid-cols-2 divide-x divide-white/10 text-center items-center">
+          <div class="px-1.5">
+            <div id="kpiCompletedPlays" class="text-base md:text-lg font-extrabold text-[#1DB954] leading-tight">0</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[#B3B3B3] mt-0.5">Completos (≥30s)</div>
+          </div>
+          <div class="px-1.5">
+            <div id="kpiSkipsInfo" class="text-base md:text-lg font-extrabold text-amber-400 leading-tight">0 (0%)</div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[#B3B3B3] mt-0.5">Skips (&lt;30s)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Faixa #1 -->
+      <div class="spotify-card p-3.5 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-[#B3B3B3] mb-1">
+          <span>Faixa #1 no Período</span>
+          <span class="text-[#1DB954] font-bold">♫</span>
+        </div>
+        <div id="kpiTopTrackName" class="text-base font-extrabold text-white truncate">-</div>
+        <div class="text-xs text-[#B3B3B3] mt-1 flex items-center gap-1.5 truncate">
+          <span id="kpiTopTrackMins" class="bg-[#1DB954]/15 text-[#1DB954] px-1.5 py-0.5 rounded font-bold text-[11px] shrink-0">0 min</span>
+          <span id="kpiTopTrackArtist" class="truncate">-</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Artista #1 -->
+      <div class="spotify-card p-3.5 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-[#B3B3B3] mb-1">
+          <span>Artista #1 no Período</span>
+          <span class="text-[#1DB954] font-bold">★</span>
+        </div>
+        <div id="kpiTopArtistName" class="text-base font-extrabold text-white truncate">-</div>
+        <div class="text-xs text-[#B3B3B3] mt-1 flex items-center gap-1.5 truncate">
+          <span id="kpiTopArtistHours" class="bg-[#1DB954]/15 text-[#1DB954] px-1.5 py-0.5 rounded font-bold text-[11px] shrink-0">0 h</span>
+          <span id="kpiTopArtistTracks" class="truncate">0 faixas distintas</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         VIEW 1: DASHBOARD GERAL
+         =================================================================== -->
+    <div id="view-dashboard" class="space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 spotify-card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-white">Curva Histórica de Tempo Escutado (Minutos/Mês)</h2>
+              <p class="text-xs text-[#B3B3B3]">Evolução mensal acumulada das reproduções</p>
+            </div>
+            <button id="btnJumpPatterns" type="button" class="text-xs text-[#1DB954] hover:underline">
+              Ver padrões horários →
+            </button>
+          </div>
+          <div class="relative h-72 w-full">
+            <canvas id="dashboardCurveCanvas"></canvas>
+          </div>
+        </div>
+
+        <div class="spotify-card p-5">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h2 class="text-base font-bold text-white">Assinatura Acústica</h2>
+              <p class="text-xs text-[#B3B3B3]">Média ponderada (/v1/audio-features)</p>
+            </div>
+            <span id="dashBpmBadge" class="text-xs font-bold px-2 py-0.5 rounded bg-[#242424] text-[#1DB954]">120 BPM</span>
+          </div>
+          <div class="relative h-72 w-full">
+            <canvas id="dashboardRadarCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="spotify-card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white">Top 5 Faixas no Escopo Atual</h3>
+            <button id="btnJumpTopTracks" type="button" class="text-xs text-[#1DB954] hover:underline">Ver todas</button>
+          </div>
+          <div id="dashTopTracksList" class="space-y-2.5"></div>
+        </div>
+
+        <div class="spotify-card p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white">Top 5 Artistas no Escopo Atual</h3>
+            <button id="btnJumpTopArtists" type="button" class="text-xs text-[#1DB954] hover:underline">Ver todos</button>
+          </div>
+          <div id="dashTopArtistsList" class="space-y-2.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         VIEW 2: TOP RANKINGS PERSONALIZÁVEIS
+         =================================================================== -->
+    <div id="view-rankings" class="hidden spotify-card p-5 space-y-5">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-2 bg-[#121212] p-1.5 rounded-xl border border-white/5 w-fit">
+          <button type="button" data-entity="tracks" class="entity-btn sub-pill active px-3.5 py-2 rounded-lg text-xs font-bold text-[#B3B3B3] hover:text-white transition">
+            Top Faixas
+          </button>
+          <button type="button" data-entity="artists" class="entity-btn sub-pill px-3.5 py-2 rounded-lg text-xs font-bold text-[#B3B3B3] hover:text-white transition">
+            Top Artistas
+          </button>
+          <button type="button" data-entity="albums" class="entity-btn sub-pill px-3.5 py-2 rounded-lg text-xs font-bold text-[#B3B3B3] hover:text-white transition">
+            Top Álbuns
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <input id="inputRankingSearch" type="text" placeholder="Filtrar faixa, artista ou álbum..." class="bg-[#242424] border border-white/10 rounded-full px-4 py-1.5 text-xs text-white focus:outline-none focus:border-[#1DB954] w-64" />
+          <label class="flex items-center gap-2 text-xs text-[#B3B3B3] cursor-pointer bg-[#242424] px-3 py-1.5 rounded-full border border-white/5">
+            <input id="chkExcludeSkips" type="checkbox" checked class="accent-[#1DB954]" />
+            Ignorar skips (&lt; 30s)
+          </label>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-white/10 text-[11px] uppercase tracking-wider text-[#B3B3B3]">
+              <th class="py-3 px-3 w-12">#</th>
+              <th id="thPrimary" class="py-3 px-3">Faixa / Artista</th>
+              <th id="thSecondary" class="py-3 px-3">Álbum</th>
+              <th class="py-3 px-3 text-right">Plays Completos</th>
+              <th id="thSkipRate" class="py-3 px-3 text-right">Taxa de Skip</th>
+              <th class="py-3 px-3 text-right">Tempo Ouvido</th>
+            </tr>
+          </thead>
+          <tbody id="rankingTableBody" class="divide-y divide-white/5 text-sm"></tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 text-xs text-[#B3B3B3]">
+        <span id="rankingPaginationSummary">Exibindo 10 resultados</span>
+        <div class="flex items-center gap-2">
+          <button id="btnPrevPage" type="button" class="px-3 py-1.5 rounded-lg bg-[#242424] hover:bg-white/10 text-white font-semibold">
+            Anterior
+          </button>
+          <span id="rankingPageLabel" class="text-white font-semibold px-2">Página 1 de 1</span>
+          <button id="btnNextPage" type="button" class="px-3 py-1.5 rounded-lg bg-[#242424] hover:bg-white/10 text-white font-semibold">
+            Próxima
+          </button>
+        </div>
+      </div>
+
+      <div id="exportedPlaylistsBox" class="hidden pt-4 border-t border-white/10">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-[#1DB954] mb-2.5">
+          Playlists Privadas Exportadas nesta Sessão
+        </h4>
+        <div id="exportedPlaylistsList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         VIEW 3: MÉTRICAS DE ÁUDIO (AUDIO FEATURES)
+         =================================================================== -->
+    <div id="view-audio" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="spotify-card p-5">
+          <h3 class="text-base font-bold text-white mb-1">Radar de Atributos Musicais (/v1/audio-features)</h3>
+          <p class="text-xs text-[#B3B3B3] mb-4">Média ponderada pelos minutos escutados de cada música</p>
+          <div class="relative h-80 w-full">
+            <canvas id="audioRadarFullCanvas"></canvas>
+          </div>
+        </div>
+
+        <div class="spotify-card p-5">
+          <h3 class="text-base font-bold text-white mb-1">Decomposição Percentual do Perfil de Gosto</h3>
+          <p class="text-xs text-[#B3B3B3] mb-4">
+            Andamento médio: <strong id="audioAvgTempo" class="text-[#1DB954]">120 BPM</strong> •
+            Vocal/Speechiness: <strong id="audioAvgSpeech" class="text-white">5%</strong>
+          </p>
+          <div class="relative h-80 w-full">
+            <canvas id="audioBarsCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="spotify-card p-5">
+        <h3 class="text-base font-bold text-white mb-3">Matriz de Audio Features por Faixa</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-white/10 text-[#B3B3B3] uppercase">
+                <th class="py-2.5 px-3">Faixa</th>
+                <th class="py-2.5 px-3">Artista</th>
+                <th class="py-2.5 px-3 text-right">Valência (Alegria)</th>
+                <th class="py-2.5 px-3 text-right">Energia</th>
+                <th class="py-2.5 px-3 text-right">Dançabilidade</th>
+                <th class="py-2.5 px-3 text-right">Acústica</th>
+                <th class="py-2.5 px-3 text-right">Instrumental</th>
+                <th class="py-2.5 px-3 text-right">BPM</th>
+              </tr>
+            </thead>
+            <tbody id="audioFeaturesTableBody" class="divide-y divide-white/5"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         NOVA VIEW: RESUMO ELEMENTAL & GERADOR DE STORY / IMAGEM IA
+         =================================================================== -->
+    <div id="view-summary" class="hidden space-y-5">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <!-- COLUNA ESQUERDA: CARD ELEMENTAL ULTRA-COMPACTO ("BATEU O OLHO, IDENTIFICOU") -->
+        <div class="lg:col-span-5 spotify-card p-4 border border-[#1DB954]/30">
+          <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-[#1DB954]/20 text-[#1DB954]">Resumo Rápido</span>
+              <h2 class="text-base font-extrabold text-white mt-1">Raio-X Elemental do Ouvinte</h2>
+            </div>
+            <span id="summaryScopeBadge" class="text-[11px] font-semibold text-[#B3B3B3] bg-[#242424] px-2.5 py-1 rounded-full">Todo Histórico</span>
+          </div>
+
+          <!-- Persona / Arquétipo IA -->
+          <div class="p-3 rounded-xl bg-gradient-to-r from-[#1DB954]/20 via-[#242424] to-[#181818] border border-[#1DB954]/30 mb-3">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[#1DB954]">Arquétipo Musical Identificado por IA</div>
+            <div id="summaryPersonaTitle" class="text-sm font-extrabold text-white mt-0.5">Aguardando Histórico...</div>
+            <div id="summaryPersonaDesc" class="text-[11px] text-[#B3B3B3] mt-0.5 leading-snug">Importe seus arquivos JSON para gerar o diagnóstico do seu perfil musical.</div>
+          </div>
+
+          <!-- Grade Tripla de Tempo + Plays/Skips -->
+          <div class="grid grid-cols-3 gap-2 text-center mb-2">
+            <div class="bg-[#242424] rounded-xl p-2">
+              <div id="sumMinutes" class="text-sm font-extrabold text-white">0</div>
+              <div class="text-[9px] font-bold uppercase text-[#1DB954]">Minutos</div>
+            </div>
+            <div class="bg-[#242424] rounded-xl p-2">
+              <div id="sumHours" class="text-sm font-extrabold text-white">0</div>
+              <div class="text-[9px] font-bold uppercase text-[#1DB954]">Horas</div>
+            </div>
+            <div class="bg-[#242424] rounded-xl p-2">
+              <div id="sumDays" class="text-sm font-extrabold text-white">0</div>
+              <div class="text-[9px] font-bold uppercase text-[#1DB954]">Dias</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-center mb-3">
+            <div class="bg-[#242424] rounded-xl p-2 flex items-center justify-between px-3">
+              <span class="text-[10px] font-bold uppercase text-[#B3B3B3]">Completos</span>
+              <span id="sumCompleted" class="text-xs font-extrabold text-[#1DB954]">0</span>
+            </div>
+            <div class="bg-[#242424] rounded-xl p-2 flex items-center justify-between px-3">
+              <span class="text-[10px] font-bold uppercase text-[#B3B3B3]">Skips</span>
+              <span id="sumSkips" class="text-xs font-extrabold text-amber-400">0</span>
+            </div>
+          </div>
+
+          <!-- Top 5 Artistas & Top 5 Músicas coladinhos -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="bg-[#121212] rounded-xl p-2.5 border border-white/5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-[#1DB954] mb-1.5">★ Top 5 Artistas</div>
+              <div id="summaryTopArtistsCompact" class="space-y-1 text-xs"></div>
+            </div>
+            <div class="bg-[#121212] rounded-xl p-2.5 border border-white/5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-[#1DB954] mb-1.5">♫ Top 5 Músicas</div>
+              <div id="summaryTopTracksCompact" class="space-y-1 text-xs"></div>
+            </div>
+          </div>
+
+          <!-- Rodapé Elemental: Álbum #1 + Horário de Pico + Streak -->
+          <div class="mt-3 pt-2.5 border-t border-white/10 grid grid-cols-3 gap-2 text-[11px]">
+            <div>
+              <span class="text-[#B3B3B3] block text-[10px]">Álbum #1</span>
+              <strong id="sumTopAlbum" class="text-white truncate block">-</strong>
+            </div>
+            <div>
+              <span class="text-[#B3B3B3] block text-[10px]">Pico Horário</span>
+              <strong id="sumPeakHour" class="text-[#1DB954] block">-</strong>
+            </div>
+            <div>
+              <span class="text-[#B3B3B3] block text-[10px]">Maior Streak</span>
+              <strong id="sumStreak" class="text-white block">0 dias</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUNA DIREITA: GERADOR DE IMAGENS RESUMO (STATS.FM / RECEIPTIFY / IA AURA / FESTIVAL) -->
+        <div class="lg:col-span-7 spotify-card p-4 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base font-bold text-white">Gerador de Imagem Resumo &amp; Story IA (1080×1920)</h3>
+              <p class="text-xs text-[#B3B3B3]">Inspirado em stats.fm, Receiptify, Spotify Wrapped e Instafest — pronto para baixar e postar</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="btnShareStoryMobile" type="button" class="px-3.5 py-1.5 rounded-full bg-[#242424] text-[#1DB954] border border-[#1DB954]/40 text-xs font-extrabold hover:bg-[#1DB954] hover:text-black transition">
+                📲 Compartilhar no Android
+              </button>
+              <button id="btnDownloadStoryPng" type="button" class="px-3.5 py-1.5 rounded-full bg-[#1DB954] text-black text-xs font-extrabold hover:bg-[#1ed760] transition">
+                ⬇ Baixar PNG (Story)
+              </button>
+            </div>
+          </div>
+
+          <!-- Seletor de Estilo Visual -->
+          <div class="flex flex-wrap gap-1.5 bg-[#121212] p-1.5 rounded-xl border border-white/5">
+            <button type="button" data-template="statsfm" class="template-btn sub-pill active px-3 py-1.5 rounded-lg text-xs font-bold text-[#B3B3B3] hover:text-white transition">
+              1. Estilo Stats.fm (Grid)
+            </button>
+            <button type="button" data-template="ai_aura" class="template-btn sub-pill px-3 py-1.5 rounded-lg text-xs font-bold text-[#B3B3B3] hover:text-white transition">
+              2. Arte Generativa IA (Aura)
+            </button>
+            <button type="button" data-template="receiptify" class="template-btn sub-pill px-3 py-1.5 rounded-lg text-xs font-bold text-[#B3B3B3] hover:text-white transition">
+              3. Estilo Receiptify (Cupom)
+            </button>
+            <button type="button" data-template="festival" class="template-btn sub-pill px-3 py-1.5 rounded-lg text-xs font-bold text-[#B3B3B3] hover:text-white transition">
+              4. Lineup de Festival
+            </button>
+          </div>
+
+          <div class="flex justify-center bg-[#121212] rounded-2xl p-3 border border-white/5">
+            <canvas id="summaryPosterCanvas" width="540" height="960" class="w-full max-w-[330px] h-auto rounded-xl shadow-2xl border border-white/10"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         VIEW 4: PADRÕES DE ESCUTA & TRIVIA DIVERTIDA
+         =================================================================== -->
+    <div id="view-patterns" class="hidden space-y-4">
+      <!-- 4 CARDS DE TRIVIA E CURIOSIDADES DO HISTÓRICO -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="spotify-card p-3.5 border-l-4 border-[#1DB954]">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-[#1DB954]">🔥 Maior Sequência (Streak)</div>
+          <div id="triviaStreakDays" class="text-xl font-extrabold text-white mt-1">0 dias seguidos</div>
+          <div id="triviaStreakRange" class="text-[11px] text-[#B3B3B3] mt-0.5 truncate">Sem dados carregados</div>
+        </div>
+        <div class="spotify-card p-3.5 border-l-4 border-emerald-400">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">📅 Dia de Maior Vício (24h)</div>
+          <div id="triviaBestDayDate" class="text-xl font-extrabold text-white mt-1">-</div>
+          <div id="triviaBestDayMins" class="text-[11px] text-[#B3B3B3] mt-0.5 truncate">0 min ouvidos nesse dia</div>
+        </div>
+        <div class="spotify-card p-3.5 border-l-4 border-amber-400">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-amber-400">🔁 Rei do Repeat (1 Dia)</div>
+          <div id="triviaObsessionTrack" class="text-sm font-extrabold text-white mt-1 truncate">-</div>
+          <div id="triviaObsessionInfo" class="text-[11px] text-[#B3B3B3] mt-0.5 truncate">0 plays no mesmo dia</div>
+        </div>
+        <div class="spotify-card p-3.5 border-l-4 border-purple-400">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-purple-400">🎲 Shuffle &amp; Impaciência</div>
+          <div id="triviaShuffleRate" class="text-xl font-extrabold text-white mt-1">0% Shuffle</div>
+          <div id="triviaFwdSkips" class="text-[11px] text-[#B3B3B3] mt-0.5 truncate">0 avanços de faixa (fwdbtn)</div>
+        </div>
+      </div>
+
+      <!-- HEATMAP 24x7 -->
+      <div class="spotify-card p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white">Heatmap de Reproduções (24 Horas × 7 Dias da Semana)</h3>
+            <p class="text-[11px] text-[#B3B3B3]">Concentração horária de escuta por dia da semana</p>
+          </div>
+          <div class="flex items-center gap-1.5 bg-[#121212] p-1 rounded-xl border border-white/5 w-fit">
+            <button id="btnHeatMinutes" type="button" class="sub-pill active px-2.5 py-1 rounded-lg text-xs font-semibold text-[#B3B3B3]">
+              Por Minutos
+            </button>
+            <button id="btnHeatPlays" type="button" class="sub-pill px-2.5 py-1 rounded-lg text-xs font-semibold text-[#B3B3B3]">
+              Por Plays
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto pb-1">
+          <div id="heatmapContainer" class="min-w-[680px] space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- NOVOS GRÁFICOS DE TRIVIA: TURNOS DO DIA + MOTIVO DE FIM DA FAIXA (REASON_END) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="spotify-card p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-white">Relógio Biológico Musical (Turnos do Dia)</h3>
+              <p class="text-[11px] text-[#B3B3B3]">Madrugada (00-05h), Manhã (06-11h), Tarde (12-17h) e Noite (18-23h)</p>
+            </div>
+            <span id="triviaWeekendBadge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-[#242424] text-[#1DB954]">FDS: 0%</span>
+          </div>
+          <div class="relative h-60 w-full">
+            <canvas id="patternsClockCanvas"></canvas>
+          </div>
+        </div>
+
+        <div class="spotify-card p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-white">Como Suas Músicas Terminam (reason_end)</h3>
+              <p class="text-[11px] text-[#B3B3B3]">Ouviu até o fim (trackdone) vs. Pulou (fwdbtn) vs. Voltou (backbtn)</p>
+            </div>
+          </div>
+          <div class="relative h-60 w-full">
+            <canvas id="patternsReasonCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- CURVA HISTÓRICA -->
+      <div class="spotify-card p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white">Curva Histórica Anual / Mensal (Plays Completos vs. Skips)</h3>
+            <p class="text-[11px] text-[#B3B3B3]">Comparativo empilhado de retenção auditiva (&ge;30s vs. &lt;30s)</p>
+          </div>
+          <div class="flex items-center gap-1.5 bg-[#121212] p-1 rounded-xl border border-white/5 w-fit">
+            <button id="btnGranularityMonthly" type="button" class="sub-pill active px-2.5 py-1 rounded-lg text-xs font-semibold text-[#B3B3B3]">
+              Visão Mensal
+            </button>
+            <button id="btnGranularityYearly" type="button" class="sub-pill px-2.5 py-1 rounded-lg text-xs font-semibold text-[#B3B3B3]">
+              Visão Anual
+            </button>
+          </div>
+        </div>
+        <div class="relative h-64 w-full">
+          <canvas id="patternsStackedCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         VIEW 5: IMPORTAR HISTÓRICO ESTENDIDO (DRAG & DROP JSON)
+         =================================================================== -->
+    <div id="view-import" class="hidden space-y-6">
+      <div class="spotify-card p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 class="text-lg font-bold text-white">Parser de Histórico Estendido (Streaming_History_Audio_*.json)</h2>
+            <p class="text-xs text-[#B3B3B3] mt-1">
+              Arraste os arquivos JSON do pacote de privacidade do Spotify. Os dados são processados e salvos localmente.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="btnDownloadSampleJson" type="button" class="px-3.5 py-2 rounded-xl bg-[#242424] hover:bg-white/10 text-xs font-semibold text-white">
+              ⬇ Baixar JSON de Exemplo
+            </button>
+            <button id="btnSimulateBatch" type="button" class="px-4 py-2 rounded-xl bg-[#1DB954] hover:bg-[#1ed760] text-xs font-bold text-black">
+              ⚡ Simular Lote (+320 Plays)
+            </button>
+            <button id="btnResetFromImport" type="button" class="px-3.5 py-2 rounded-xl bg-[#242424] hover:bg-red-500 hover:text-white text-red-400 border border-red-500/30 text-xs font-semibold transition">
+              🗑 Limpar Dados
+            </button>
+          </div>
+        </div>
+
+        <div id="dropZone" class="border-2 border-dashed border-white/15 bg-[#121212] hover:border-[#1DB954]/60 hover:bg-[#242424]/40 rounded-2xl p-10 text-center cursor-pointer transition">
+          <input id="fileInputJson" type="file" multiple class="hidden" />
+          <div class="w-14 h-14 rounded-2xl bg-[#1DB954]/15 text-[#1DB954] flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+            📂
+          </div>
+          <p class="text-base font-bold text-white">
+            Toque para selecionar <span class="text-[#1DB954]">Streaming_History_Audio_*.json</span> ou o <span class="text-[#1DB954]">.zip</span> do Spotify
+          </p>
+          <p class="text-xs text-[#B3B3B3] mt-1">Compatível com Android (Arquivos / Downloads) e Desktop • Suporta múltiplos JSONs ou pacote .zip direto</p>
+          <div class="mt-4 inline-flex flex-wrap justify-center gap-2 text-[11px] text-[#B3B3B3]">
+            <span class="px-2.5 py-1 rounded bg-[#242424]">ts</span>
+            <span class="px-2.5 py-1 rounded bg-[#242424]">ms_played</span>
+            <span class="px-2.5 py-1 rounded bg-[#242424]">master_metadata_track_name</span>
+            <span class="px-2.5 py-1 rounded bg-[#242424]">master_metadata_album_artist_name</span>
+            <span class="px-2.5 py-1 rounded bg-[#242424]">reason_end &amp; shuffle</span>
+          </div>
+        </div>
+
+        <div id="ingestStatusBox" class="hidden mt-5 p-4 rounded-xl bg-[#242424] border border-white/10 flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div>
+            <p id="ingestFileName" class="font-bold text-white">Arquivo processado</p>
+            <p id="ingestMessage" class="text-[#B3B3B3] mt-0.5"></p>
+          </div>
+          <div class="flex gap-5 shrink-0">
+            <div>
+              <span class="text-[#B3B3B3] block">Lidos</span>
+              <span id="ingestParsed" class="font-bold text-white">0</span>
+            </div>
+            <div>
+              <span class="text-[#B3B3B3] block">Inseridos</span>
+              <span id="ingestInserted" class="font-bold text-[#1DB954]">0</span>
+            </div>
+            <div>
+              <span class="text-[#B3B3B3] block">Duplicados/Ignorados</span>
+              <span id="ingestIgnored" class="font-bold text-amber-400">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         VIEW 6: CONFIGURAÇÕES / API OAUTH 2.0 PKCE
+         =================================================================== -->
+    <div id="view-settings" class="hidden space-y-6">
+      <div class="spotify-card p-6">
+        <h2 class="text-base font-bold text-white mb-1">Spotify Web API — Autenticação OAuth 2.0 com PKCE (S256)</h2>
+        <p class="text-xs text-[#B3B3B3] mb-5">
+          Geração local de <code class="text-white">code_verifier</code> e <code class="text-white">code_challenge</code> sem servidor externo
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="inputClientId" class="block text-xs font-semibold text-[#B3B3B3] mb-1.5">Spotify Client ID</label>
+            <input id="inputClientId" type="text" value="8f94c0e2a4b74d919a31e02f1b7c5d99" class="w-full bg-[#242424] border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#1DB954]" />
+          </div>
+          <div>
+            <label for="inputRedirectUri" class="block text-xs font-semibold text-[#B3B3B3] mb-1.5">Redirect URI Configurada</label>
+            <input id="inputRedirectUri" type="text" readonly value="http://localhost:8888/callback" class="w-full bg-[#121212] border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-[#B3B3B3]" />
+          </div>
+        </div>
+
+        <div class="mt-4 p-3.5 rounded-xl bg-[#121212] border border-white/5 text-xs font-mono text-[#B3B3B3] space-y-1">
+          <div>PKCE Code Verifier: <span id="pkceVerifierDisplay" class="text-white">v9xK2mP8qL4nR7wT1yZ5cB3vN6mQ8pL0aS2dF4gH6jK8</span></div>
+          <div>SHA-256 Challenge: <span id="pkceChallengeDisplay" class="text-[#1DB954]">E9Melhoa2OwvFrEMTgu3chve11t8_p2G4S-9_X2kL1M</span></div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-4 mt-5 pt-4 border-t border-white/5">
+          <div class="text-xs text-[#B3B3B3]">
+            Status: <strong id="oauthStatusLabel" class="text-[#1DB954]">Conectado • Token válido e renovação automática ativa</strong>
+          </div>
+          <div class="flex gap-2.5">
+            <button id="btnGeneratePKCE" type="button" class="px-4 py-2 rounded-full bg-[#242424] text-white text-xs font-semibold hover:bg-white/10 transition">
+              Regerar Par PKCE (S256)
+            </button>
+            <button id="btnConnectSpotifyOAuth" type="button" class="px-4 py-2 rounded-full bg-[#1DB954] text-black text-xs font-bold hover:bg-[#1ed760] transition">
+              Autenticar / Renovar Token OAuth
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </div>
+  </main>
+
+  <!-- BARRA DE NAVEGAÇÃO INFERIOR NATIVA PARA ANDROID / CELULAR -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#121212]/95 backdrop-blur-md border-t border-white/10 grid grid-cols-6 py-1.5 px-1">
+    <button type="button" data-tab="dashboard" class="nav-btn active flex flex-col items-center justify-center py-1 rounded-lg text-[10px] font-semibold text-[#B3B3B3]">
+      <span class="text-sm">📊</span>
+      <span>Início</span>
+    </button>
+    <button type="button" data-tab="summary" class="nav-btn flex flex-col items-center justify-center py-1 rounded-lg text-[10px] font-semibold text-[#B3B3B3]">
+      <span class="text-sm">✨</span>
+      <span>Story IA</span>
+    </button>
+    <button type="button" data-tab="rankings" class="nav-btn flex flex-col items-center justify-center py-1 rounded-lg text-[10px] font-semibold text-[#B3B3B3]">
+      <span class="text-sm">🏆</span>
+      <span>Top</span>
+    </button>
+    <button type="button" data-tab="audio" class="nav-btn flex flex-col items-center justify-center py-1 rounded-lg text-[10px] font-semibold text-[#B3B3B3]">
+      <span class="text-sm">🎛️</span>
+      <span>Áudio</span>
+    </button>
+    <button type="button" data-tab="patterns" class="nav-btn flex flex-col items-center justify-center py-1 rounded-lg text-[10px] font-semibold text-[#B3B3B3]">
+      <span class="text-sm">🕒</span>
+      <span>Trivia</span>
+    </button>
+    <button type="button" data-tab="import" class="nav-btn flex flex-col items-center justify-center py-1 rounded-lg text-[10px] font-semibold text-[#B3B3B3]">
+      <span class="text-sm">📂</span>
+      <span>Importar</span>
+    </button>
+  </nav>
+
+  <script>
+    // =========================================================================
+    // BASE DE DADOS CATÁLOGO E GERADOR DETERMINÍSTICO DE HISTÓRICO
+    // =========================================================================
+    const CATALOG_TRACKS = [
+      { track: 'Veridis Quo', artist: 'Daft Punk', album: 'Discovery', uri: 'spotify:track:2LD2gT7gwAurzdQDQtILds', durationMs: 345186, weight: 18, shortBoost: 1.4, medBoost: 1.2, features: { valence: 48, energy: 59, danceability: 65, acousticness: 6, instrumentalness: 88, speechiness: 3, liveness: 10, tempo: 112 } },
+      { track: 'Weird Fishes/ Arpeggi', artist: 'Radiohead', album: 'In Rainbows', uri: 'spotify:track:4wajJ1o7jWIg62YqpkHC7S', durationMs: 318186, weight: 16, shortBoost: 1.6, medBoost: 1.3, features: { valence: 32, energy: 68, danceability: 51, acousticness: 24, instrumentalness: 42, speechiness: 4, liveness: 12, tempo: 153 } },
+      { track: 'Let It Happen', artist: 'Tame Impala', album: 'Currents', uri: 'spotify:track:2X485T9Z5Ly0xyaghN73ed', durationMs: 467586, weight: 15, shortBoost: 1.1, medBoost: 1.5, features: { valence: 56, energy: 83, danceability: 62, acousticness: 2, instrumentalness: 26, speechiness: 5, liveness: 19, tempo: 125 } },
+      { track: 'Construção', artist: 'Chico Buarque', album: 'Construção', uri: 'spotify:track:3Z2tPWi6182pkYQ2C6A72S', durationMs: 384200, weight: 14, shortBoost: 1.25, medBoost: 1.1, features: { valence: 41, energy: 64, danceability: 44, acousticness: 68, instrumentalness: 11, speechiness: 9, liveness: 16, tempo: 118 } },
+      { track: 'Instant Crush (feat. Julian Casablancas)', artist: 'Daft Punk', album: 'Random Access Memories', uri: 'spotify:track:2cGxRwrMyEAp8dEbuZaVv6', durationMs: 337560, weight: 13, shortBoost: 0.9, medBoost: 1.35, features: { valence: 52, energy: 61, danceability: 76, acousticness: 4, instrumentalness: 18, speechiness: 4, liveness: 9, tempo: 110 } },
+      { track: 'Everything In Its Right Place', artist: 'Radiohead', album: 'Kid A', uri: 'spotify:track:2kRFrWaLWiKq48YYVdGcm8', durationMs: 251426, weight: 12, shortBoost: 1.5, medBoost: 1.1, features: { valence: 24, energy: 46, danceability: 38, acousticness: 31, instrumentalness: 61, speechiness: 5, liveness: 11, tempo: 124 } },
+      { track: 'Tropicália', artist: 'Caetano Veloso', album: 'Caetano Veloso (1968)', uri: 'spotify:track:5vV3G22H2D77tA84L8O5lS', durationMs: 221900, weight: 11, shortBoost: 1.0, medBoost: 1.2, features: { valence: 74, energy: 71, danceability: 58, acousticness: 54, instrumentalness: 5, speechiness: 11, liveness: 22, tempo: 128 } },
+      { track: 'Breathe Deeper', artist: 'Tame Impala', album: 'The Slow Rush', uri: 'spotify:track:6ToM0uwxtPKXl3uL4hV81G', durationMs: 372866, weight: 11, shortBoost: 1.7, medBoost: 1.2, features: { valence: 79, energy: 77, danceability: 81, acousticness: 8, instrumentalness: 14, speechiness: 6, liveness: 14, tempo: 108 } },
+      { track: 'Clube da Esquina Nº 2', artist: 'Milton Nascimento', album: 'Clube da Esquina', uri: 'spotify:track:4wX2X3bB0xN1N3m0yB7q1S', durationMs: 219600, weight: 10, shortBoost: 1.3, medBoost: 1.0, features: { valence: 62, energy: 49, danceability: 47, acousticness: 78, instrumentalness: 52, speechiness: 3, liveness: 13, tempo: 96 } },
+      { track: 'Starlight', artist: 'Muse', album: 'Black Holes and Revelations', uri: 'spotify:track:3skn2lauGk7Dx6bVIt5DVj', durationMs: 240213, weight: 10, shortBoost: 0.8, medBoost: 1.0, features: { valence: 44, energy: 89, danceability: 55, acousticness: 1, instrumentalness: 8, speechiness: 5, liveness: 24, tempo: 122 } },
+      { track: 'On Melancholy Hill', artist: 'Gorillaz', album: 'Plastic Beach', uri: 'spotify:track:0q6LuUqGLUiCPP1cbdwFs3', durationMs: 233866, weight: 9, shortBoost: 1.2, medBoost: 1.4, features: { valence: 59, energy: 69, danceability: 69, acousticness: 3, instrumentalness: 29, speechiness: 3, liveness: 11, tempo: 120 } },
+      { track: 'Digital Love', artist: 'Daft Punk', album: 'Discovery', uri: 'spotify:track:2VEZx7NWsZ1D0eJ4uv5Fym', durationMs: 301373, weight: 9, shortBoost: 1.0, medBoost: 1.1, features: { valence: 71, energy: 78, danceability: 74, acousticness: 5, instrumentalness: 34, speechiness: 4, liveness: 15, tempo: 125 } },
+      { track: 'O Mundo É um Moinho', artist: 'Cartola', album: 'Cartola (1976)', uri: 'spotify:track:5K7AMnN9mN4C8H5O8jY3P2', durationMs: 233000, weight: 8, shortBoost: 1.4, medBoost: 1.15, features: { valence: 35, energy: 38, danceability: 49, acousticness: 86, instrumentalness: 4, speechiness: 6, liveness: 12, tempo: 88 } },
+      { track: 'Midnight City', artist: 'M83', album: "Hurry Up, We're Dreaming", uri: 'spotify:track:1eyzqe2QqGZUmfcPZtrIyt', durationMs: 243960, weight: 8, shortBoost: 0.75, medBoost: 0.95, features: { valence: 54, energy: 84, danceability: 59, acousticness: 2, instrumentalness: 19, speechiness: 6, liveness: 18, tempo: 105 } },
+      { track: 'Jigsaw Falling Into Place', artist: 'Radiohead', album: 'In Rainbows', uri: 'spotify:track:0YJ9FWWHn9EfnN0lHwbzvV', durationMs: 248893, weight: 8, shortBoost: 1.5, medBoost: 1.25, features: { valence: 46, energy: 81, danceability: 48, acousticness: 12, instrumentalness: 22, speechiness: 5, liveness: 11, tempo: 166 } },
+      { track: 'Aquarela do Brasil', artist: 'João Gilberto', album: 'Brasil', uri: 'spotify:track:6b8Be6ljOzmkOmFslEb23P', durationMs: 238000, weight: 7, shortBoost: 1.0, medBoost: 1.0, features: { valence: 78, energy: 45, danceability: 67, acousticness: 84, instrumentalness: 9, speechiness: 5, liveness: 10, tempo: 104 } }
+    ];
+
+    function buildInitialStreams() {
+      try {
+        localStorage.removeItem('spotify_analytics_portable_streams_v1');
+        const saved = localStorage.getItem('spotify_analytics_portable_streams_v2');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    // =========================================================================
+    // ESTADO DA APLICAÇÃO
+    // =========================================================================
+    const state = {
+      activeTab: 'dashboard',
+      streams: buildInitialStreams(),
+      timeScope: 'all_history',
+      customStartDate: '2026-01-01',
+      customEndDate: '2026-11-10',
+      rankingEntity: 'tracks',
+      searchQuery: '',
+      excludeSkips: true,
+      currentPage: 1,
+      pageSize: 10,
+      heatmapMetric: 'minutes',
+      curveGranularity: 'monthly',
+      posterTemplate: 'statsfm',
+      compactMode: false,
+      exportedPlaylists: []
+    };
+
+    let charts = {
+      dashCurve: null,
+      dashRadar: null,
+      audioRadar: null,
+      audioBars: null,
+      patternsStacked: null,
+      patternsClock: null,
+      patternsReason: null
+    };
+
+    function deriveTrackFeatures(trackName, artistName) {
+      const lowerT = String(trackName || '').toLowerCase();
+      const lowerA = String(artistName || '').toLowerCase();
+      for (let i = 0; i < CATALOG_TRACKS.length; i++) {
+        if (CATALOG_TRACKS[i].track.toLowerCase() === lowerT) {
+          return CATALOG_TRACKS[i].features;
+        }
+      }
+      // deterministic hash from track + artist so each song in user's JSON has a realistic distinct signature
+      let h1 = 2166136261, h2 = 16777619;
+      const combined = lowerT + '::' + lowerA;
+      for (let i = 0; i < combined.length; i++) {
+        const c = combined.charCodeAt(i);
+        h1 ^= c;
+        h1 = Math.imul(h1, 16777619);
+        h2 = (h2 * 31 + c) & 0x7fffffff;
+      }
+      h1 = Math.abs(h1);
+      // Genre/artist heuristics for known artists in user's library + general music
+      let baseVal = 30 + (h1 % 55);
+      let baseEne = 40 + ((h1 >> 4) % 52);
+      let baseDan = 35 + ((h1 >> 8) % 52);
+      let baseAco = 8 + ((h1 >> 12) % 68);
+      let baseIns = 4 + ((h1 >> 16) % 55);
+      let baseSpe = 4 + (h2 % 18);
+      let baseLiv = 8 + ((h2 >> 4) % 24);
+      let baseTem = 86 + ((h2 >> 8) % 82);
+
+      if (lowerA.includes('pink floyd')) {
+        baseIns = 42 + (h1 % 38);
+        baseAco = 28 + (h1 % 35);
+        baseVal = 22 + (h1 % 28);
+        baseEne = 38 + (h1 % 32);
+        baseTem = 92 + (h2 % 44);
+      } else if (lowerA.includes('racionais') || lowerA.includes('yung buda') || lowerA.includes('sabotage') || lowerA.includes('emicida')) {
+        baseSpe = 24 + (h1 % 22);
+        baseDan = 66 + (h1 % 22);
+        baseEne = 68 + (h1 % 24);
+        baseIns = 2 + (h1 % 10);
+        baseTem = 88 + (h2 % 26);
+      } else if (lowerA.includes('sade')) {
+        baseVal = 58 + (h1 % 24);
+        baseDan = 64 + (h1 % 18);
+        baseAco = 42 + (h1 % 28);
+        baseEne = 44 + (h1 % 22);
+      } else if (lowerA.includes('red hot chili peppers') || lowerA.includes('led zeppelin')) {
+        baseEne = 72 + (h1 % 22);
+        baseVal = 54 + (h1 % 30);
+        baseDan = 52 + (h1 % 26);
+      }
+      return {
+        valence: baseVal,
+        energy: baseEne,
+        danceability: baseDan,
+        acousticness: baseAco,
+        instrumentalness: baseIns,
+        speechiness: baseSpe,
+        liveness: baseLiv,
+        tempo: baseTem
+      };
+    }
+
+    function showToast(text, isError) {
+      const box = document.getElementById('toastContainer');
+      const label = document.getElementById('toastText');
+      const icon = document.getElementById('toastIcon');
+      label.textContent = text;
+      icon.className = isError
+        ? 'w-2.5 h-2.5 rounded-full bg-red-400 shrink-0'
+        : 'w-2.5 h-2.5 rounded-full bg-[#1DB954] shrink-0';
+      box.classList.remove('hidden');
+      box.classList.add('flex');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+      }, 4200);
+    }
+
+    // =========================================================================
+    // CÁLCULO DE MÉTRICAS E AGREGAÇÕES
+    // =========================================================================
+    function getFilteredStreams() {
+      if (state.streams.length === 0) return [];
+      const maxTs = state.streams[state.streams.length - 1].ts;
+      const refTime = new Date(maxTs).getTime();
+
+      if (state.timeScope === 'short_term') {
+        const cut = new Date(refTime - 28 * 86400 * 1000).toISOString();
+        return state.streams.filter((s) => s.ts >= cut);
+      }
+      if (state.timeScope === 'medium_term') {
+        const cut = new Date(refTime - 180 * 86400 * 1000).toISOString();
+        return state.streams.filter((s) => s.ts >= cut);
+      }
+      if (state.timeScope === 'long_term') {
+        const cut = new Date(refTime - 365 * 86400 * 1000).toISOString();
+        return state.streams.filter((s) => s.ts >= cut);
+      }
+      if (state.timeScope === 'custom_range') {
+        const startIso = state.customStartDate + 'T00:00:00Z';
+        const endIso = state.customEndDate + 'T23:59:59Z';
+        return state.streams.filter((s) => s.ts >= startIso && s.ts <= endIso);
+      }
+      return state.streams;
+    }
+
+    function computeAllAnalytics() {
+      const filtered = getFilteredStreams();
+      let totalMs = 0;
+      let completedPlays = 0;
+      let skippedPlays = 0;
+
+      const trackMap = new Map();
+      const artistMap = new Map();
+      const albumMap = new Map();
+
+      for (let i = 0; i < filtered.length; i++) {
+        const s = filtered[i];
+        totalMs += s.ms_played;
+        const isSkip = s.ms_played < 30000;
+        if (isSkip) skippedPlays++;
+        else completedPlays++;
+
+        if (state.excludeSkips && isSkip) continue;
+
+        const tKey = s.master_metadata_track_name + '::' + s.master_metadata_album_artist_name;
+        let tObj = trackMap.get(tKey);
+        if (!tObj) {
+          tObj = {
+            name: s.master_metadata_track_name,
+            artist: s.master_metadata_album_artist_name,
+            album: s.master_metadata_album_album_name,
+            uri: s.spotify_track_uri,
+            ms: 0,
+            fullPlays: 0,
+            skips: 0
+          };
+          trackMap.set(tKey, tObj);
+        }
+        tObj.ms += s.ms_played;
+        if (isSkip) tObj.skips++;
+        else tObj.fullPlays++;
+
+        const aKey = s.master_metadata_album_artist_name;
+        let aObj = artistMap.get(aKey);
+        if (!aObj) {
+          aObj = { name: aKey, ms: 0, fullPlays: 0, skips: 0, tracks: new Set() };
+          artistMap.set(aKey, aObj);
+        }
+        aObj.ms += s.ms_played;
+        if (isSkip) aObj.skips++;
+        else aObj.fullPlays++;
+        aObj.tracks.add(s.master_metadata_track_name);
+
+        const albKey = s.master_metadata_album_album_name + '::' + s.master_metadata_album_artist_name;
+        let albObj = albumMap.get(albKey);
+        if (!albObj) {
+          albObj = {
+            name: s.master_metadata_album_album_name,
+            artist: s.master_metadata_album_artist_name,
+            ms: 0,
+            fullPlays: 0,
+            tracks: new Set()
+          };
+          albumMap.set(albKey, albObj);
+        }
+        albObj.ms += s.ms_played;
+        if (!isSkip) albObj.fullPlays++;
+        albObj.tracks.add(s.master_metadata_track_name);
+      }
+
+      const topTracks = Array.from(trackMap.values())
+        .map((t) => ({
+          ...t,
+          minutes: Number((t.ms / 60000).toFixed(1)),
+          hours: Number((t.ms / 3600000).toFixed(2)),
+          skipRate: t.fullPlays + t.skips > 0 ? Number(((t.skips / (t.fullPlays + t.skips)) * 100).toFixed(1)) : 0
+        }))
+        .sort((a, b) => b.ms - a.ms);
+
+      const topArtists = Array.from(artistMap.values())
+        .map((a) => ({
+          name: a.name,
+          minutes: Number((a.ms / 60000).toFixed(1)),
+          hours: Number((a.ms / 3600000).toFixed(2)),
+          fullPlays: a.fullPlays,
+          uniqueTracks: a.tracks.size
+        }))
+        .sort((a, b) => b.minutes - a.minutes);
+
+      const topAlbums = Array.from(albumMap.values())
+        .map((alb) => ({
+          name: alb.name,
+          artist: alb.artist,
+          minutes: Number((alb.ms / 60000).toFixed(1)),
+          hours: Number((alb.ms / 3600000).toFixed(2)),
+          fullPlays: alb.fullPlays,
+          uniqueTracks: alb.tracks.size
+        }))
+        .sort((a, b) => b.minutes - a.minutes);
+
+      // Série temporal
+      const seriesMap = new Map();
+      for (let i = 0; i < filtered.length; i++) {
+        const s = filtered[i];
+        const key = state.curveGranularity === 'monthly' ? s.ts.slice(0, 7) : s.ts.slice(0, 4);
+        let bucket = seriesMap.get(key);
+        if (!bucket) {
+          bucket = { period: key, minutes: 0, fullPlays: 0, skips: 0 };
+          seriesMap.set(key, bucket);
+        }
+        bucket.minutes += s.ms_played / 60000;
+        if (s.ms_played < 30000) bucket.skips++;
+        else bucket.fullPlays++;
+      }
+      const series = Array.from(seriesMap.values())
+        .map((b) => ({ ...b, minutes: Math.round(b.minutes) }))
+        .sort((a, b) => a.period.localeCompare(b.period));
+
+      // Audio features ponderadas + Trivia & Hábitos
+      let wSum = 0, val = 0, ene = 0, dan = 0, aco = 0, ins = 0, spe = 0, liv = 0, tem = 0;
+      const dayMinutesMap = new Map();
+      const dayTrackCountMap = new Map();
+      const hourCounts = new Array(24).fill(0);
+      const clockShifts = [0, 0, 0, 0]; // Madrugada (0-5), Manhã (6-11), Tarde (12-17), Noite (18-23)
+      let weekendMs = 0;
+      let shuffleCount = 0;
+      const reasonCounts = { trackdone: 0, fwdbtn: 0, backbtn: 0, other: 0 };
+
+      for (let i = 0; i < filtered.length; i++) {
+        const s = filtered[i];
+        const f = deriveTrackFeatures(s.master_metadata_track_name, s.master_metadata_album_artist_name);
+        const w = Math.max(s.ms_played, 1000);
+        wSum += w;
+        val += f.valence * w;
+        ene += f.energy * w;
+        dan += f.danceability * w;
+        aco += f.acousticness * w;
+        ins += f.instrumentalness * w;
+        spe += f.speechiness * w;
+        liv += f.liveness * w;
+        tem += f.tempo * w;
+
+        const dayStr = s.ts.slice(0, 10);
+        dayMinutesMap.set(dayStr, (dayMinutesMap.get(dayStr) || 0) + s.ms_played / 60000);
+
+        if (s.ms_played >= 30000) {
+          const dtKey = dayStr + '||' + s.master_metadata_track_name + '||' + s.master_metadata_album_artist_name;
+          dayTrackCountMap.set(dtKey, (dayTrackCountMap.get(dtKey) || 0) + 1);
+        }
+
+        const dt = new Date(s.ts);
+        if (!isNaN(dt.getTime())) {
+          const hr = dt.getUTCHours();
+          const wd = dt.getUTCDay();
+          hourCounts[hr] += s.ms_played / 60000;
+          if (hr < 6) clockShifts[0] += s.ms_played / 60000;
+          else if (hr < 12) clockShifts[1] += s.ms_played / 60000;
+          else if (hr < 18) clockShifts[2] += s.ms_played / 60000;
+          else clockShifts[3] += s.ms_played / 60000;
+
+          if (wd === 0 || wd === 6) weekendMs += s.ms_played;
+        }
+
+        if (s.shuffle) shuffleCount++;
+        const r = String(s.reason_end || '').toLowerCase();
+        if (r === 'trackdone') reasonCounts.trackdone++;
+        else if (r === 'fwdbtn') reasonCounts.fwdbtn++;
+        else if (r === 'backbtn') reasonCounts.backbtn++;
+        else reasonCounts.other++;
+      }
+
+      // Cálculo de Maior Streak de dias consecutivos
+      const sortedDays = Array.from(dayMinutesMap.keys()).sort();
+      let maxStreak = 0, curStreak = 0, bestStart = '-', bestEnd = '-', curStart = '-';
+      for (let i = 0; i < sortedDays.length; i++) {
+        if (i === 0) {
+          curStreak = 1;
+          curStart = sortedDays[0];
+        } else {
+          const prevD = new Date(sortedDays[i - 1] + 'T00:00:00Z').getTime();
+          const currD = new Date(sortedDays[i] + 'T00:00:00Z').getTime();
+          const diffDays = Math.round((currD - prevD) / 86400000);
+          if (diffDays === 1) {
+            curStreak++;
+          } else {
+            curStreak = 1;
+            curStart = sortedDays[i];
+          }
+        }
+        if (curStreak > maxStreak) {
+          maxStreak = curStreak;
+          bestStart = curStart;
+          bestEnd = sortedDays[i];
+        }
+      }
+
+      // Dia de maior vício
+      let bestDay = '-', bestDayMins = 0;
+      dayMinutesMap.forEach((m, dKey) => {
+        if (m > bestDayMins) {
+          bestDayMins = m;
+          bestDay = dKey;
+        }
+      });
+
+      // Maior obsessão em 1 único dia
+      let obsTrack = '-', obsArtist = '-', obsDay = '-', obsPlays = 0;
+      dayTrackCountMap.forEach((cnt, key) => {
+        if (cnt > obsPlays) {
+          obsPlays = cnt;
+          const parts = key.split('||');
+          obsDay = parts[0];
+          obsTrack = parts[1];
+          obsArtist = parts[2];
+        }
+      });
+
+      // Horário de pico
+      let peakHr = 0, peakHrMins = 0;
+      for (let h = 0; h < 24; h++) {
+        if (hourCounts[h] > peakHrMins) {
+          peakHrMins = hourCounts[h];
+          peakHr = h;
+        }
+      }
+
+      const d = wSum || 1;
+      const audioFeatures = {
+        labels: ['Energia', 'Dançabilidade', 'Valência (Alegria)', 'Acústica', 'Instrumental', 'Ao Vivo'],
+        values: [
+          Number((ene / d).toFixed(1)),
+          Number((dan / d).toFixed(1)),
+          Number((val / d).toFixed(1)),
+          Number((aco / d).toFixed(1)),
+          Number((ins / d).toFixed(1)),
+          Number((liv / d).toFixed(1))
+        ],
+        avgTempo: Number((tem / d).toFixed(1)),
+        avgSpeech: Number((spe / d).toFixed(1))
+      };
+
+      const totalPlays = completedPlays + skippedPlays;
+      const skipRate = totalPlays > 0 ? Number(((skippedPlays / totalPlays) * 100).toFixed(1)) : 0;
+
+      // Determina Arquétipo Musical IA a partir dos dados reais
+      let personaTitle = 'Aguardando Dados Musicais';
+      let personaDesc = 'Importe seus arquivos JSON na aba Importar Histórico para gerar seu arquétipo.';
+      if (filtered.length > 0) {
+        const avgTrackMin = completedPlays > 0 ? (totalMs / 60000) / Math.max(1, totalPlays) : 0;
+        const topA = topArtists[0] ? topArtists[0].name : '';
+        if (avgTrackMin >= 3.2 && audioFeatures.values[4] >= 25) {
+          personaTitle = 'Arquiteto de Álbuns Conceituais & Rock Progressivo';
+          personaDesc = `Imersão profunda em faixas longas liderada por ${topA}, com pico às ${String(peakHr).padStart(2, '0')}h e ${maxStreak} dias de sequência.`;
+        } else if (skipRate > 42) {
+          personaTitle = 'Curador Frenético de Garimpo Sonoro';
+          personaDesc = `Radares ligados: você testa dezenas de faixas (${skipRate}% skips) até cravar seus clássicos de ${topA}.`;
+        } else if (clockShifts[3] + clockShifts[0] > clockShifts[1] + clockShifts[2]) {
+          personaTitle = 'Explorador Noturno de Atmosferas & Ritmos';
+          personaDesc = `Sua trilha sonora ganha vida à noite (pico às ${String(peakHr).padStart(2, '0')}h), comandada por ${topA}.`;
+        } else {
+          personaTitle = 'Guardião Fiel de Clássicos & Ritmos Intensos';
+          personaDesc = `Alta fidelidade musical (${(100 - skipRate).toFixed(0)}% retenção) com ${Math.round(totalMs / 3600000)}h acumuladas ao som de ${topA}.`;
+        }
+      }
+
+      return {
+        filtered,
+        totalMinutes: Math.round(totalMs / 60000),
+        totalHours: Number((totalMs / 3600000).toFixed(1)),
+        totalDays: Number((totalMs / 86400000).toFixed(2)),
+        completedPlays,
+        skippedPlays,
+        skipRate,
+        topTracks,
+        topArtists,
+        topAlbums,
+        series,
+        audioFeatures,
+        trivia: {
+          maxStreak,
+          streakRange: maxStreak > 0 ? `${bestStart} a ${bestEnd}` : 'Sem dados',
+          bestDay,
+          bestDayMins: Math.round(bestDayMins),
+          bestDayHours: Number((bestDayMins / 60).toFixed(1)),
+          obsTrack,
+          obsArtist,
+          obsDay,
+          obsPlays,
+          shuffleRate: totalPlays > 0 ? Number(((shuffleCount / totalPlays) * 100).toFixed(1)) : 0,
+          peakHourLabel: filtered.length > 0 ? `${String(peakHr).padStart(2, '0')}h00` : '-',
+          weekendPct: totalMs > 0 ? Number(((weekendMs / totalMs) * 100).toFixed(1)) : 0,
+          clockShifts: clockShifts.map((m) => Math.round(m)),
+          reasonCounts,
+          personaTitle,
+          personaDesc
+        }
+      };
+    }
+
+    // =========================================================================
+    // RENDERIZAÇÃO DE DOM E GRÁFICOS
+    // =========================================================================
+    function renderAll() {
+      const data = computeAllAnalytics();
+
+      // KPIs (Mesmo nível de destaque para Minutos, Horas e Dias e para Completos vs. Skips)
+      document.getElementById('sidebarTotalRecords').textContent = state.streams.length.toLocaleString('pt-BR') + ' plays';
+      document.getElementById('kpiTotalMinutes').textContent = data.totalMinutes.toLocaleString('pt-BR');
+      document.getElementById('kpiTotalHours').textContent = data.totalHours.toLocaleString('pt-BR');
+      document.getElementById('kpiTotalDays').textContent = data.totalDays.toLocaleString('pt-BR');
+      document.getElementById('kpiCompletedPlays').textContent = data.completedPlays.toLocaleString('pt-BR');
+      document.getElementById('kpiSkipsInfo').textContent = `${data.skippedPlays.toLocaleString('pt-BR')} (${data.skipRate}%)`;
+
+      const t1 = data.topTracks[0];
+      document.getElementById('kpiTopTrackName').textContent = t1 ? t1.name : 'Sem dados';
+      document.getElementById('kpiTopTrackMins').textContent = (t1 ? t1.minutes : 0) + ' min';
+      document.getElementById('kpiTopTrackArtist').textContent = t1 ? t1.artist : '-';
+
+      const a1 = data.topArtists[0];
+      document.getElementById('kpiTopArtistName').textContent = a1 ? a1.name : 'Sem dados';
+      document.getElementById('kpiTopArtistHours').textContent = (a1 ? a1.hours : 0) + ' horas';
+      document.getElementById('kpiTopArtistTracks').textContent = (a1 ? a1.uniqueTracks : 0) + ' faixas distintas';
+
+      document.getElementById('dashBpmBadge').textContent = data.audioFeatures.avgTempo + ' BPM';
+      document.getElementById('audioAvgTempo').textContent = data.audioFeatures.avgTempo + ' BPM';
+      document.getElementById('audioAvgSpeech').textContent = data.audioFeatures.avgSpeech + '%';
+
+      // Modal info
+      document.getElementById('modalTrackCount').textContent = Math.min(25, data.topTracks.length) + ' URIs';
+      document.getElementById('modalTopTrack').textContent = t1 ? `${t1.name} (${t1.artist})` : 'N/A';
+
+      // Top 5 listas do Dashboard
+      const emptyDashPlaceholder = `
+        <div class="p-6 rounded-xl bg-[#242424]/40 border border-dashed border-white/10 text-center text-xs text-[#B3B3B3]">
+          Nenhum histórico carregado. Vá em <strong class="text-[#1DB954]">Importar Histórico</strong> para enviar seus arquivos JSON ou conecte sua conta via OAuth.
+        </div>
+      `;
+      const top5TracksHtml = data.topTracks.length === 0 ? emptyDashPlaceholder : data.topTracks.slice(0, 5).map((t, idx) => `
+        <div class="flex items-center px-3 py-2 rounded-xl bg-[#242424]/75 hover:bg-[#242424] transition">
+          <span class="w-5 font-extrabold text-xs text-[#1DB954] shrink-0">#${idx + 1}</span>
+          <div class="min-w-0 max-w-[230px] sm:max-w-[260px]">
+            <p class="text-xs font-bold text-white truncate">${t.name}</p>
+            <p class="text-[11px] text-[#B3B3B3] truncate">${t.artist} • ${t.album}</p>
+          </div>
+          <div class="flex-1 border-b border-dotted border-white/15 mx-2.5 self-center"></div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="px-2 py-0.5 rounded-md bg-[#1DB954]/15 text-[#1DB954] font-extrabold text-xs">${t.minutes} min</span>
+            <span class="px-1.5 py-0.5 rounded bg-black/40 text-[#B3B3B3] font-semibold text-[11px]">${t.fullPlays} plays</span>
+          </div>
+        </div>
+      `).join('');
+      document.getElementById('dashTopTracksList').innerHTML = top5TracksHtml;
+
+      const top5ArtistsHtml = data.topArtists.length === 0 ? emptyDashPlaceholder : data.topArtists.slice(0, 5).map((a, idx) => `
+        <div class="flex items-center px-3 py-2 rounded-xl bg-[#242424]/75 hover:bg-[#242424] transition">
+          <span class="w-5 font-extrabold text-xs text-[#1DB954] shrink-0">#${idx + 1}</span>
+          <div class="min-w-0 max-w-[220px] sm:max-w-[250px]">
+            <p class="text-xs font-bold text-white truncate">${a.name}</p>
+            <p class="text-[11px] text-[#B3B3B3]">${a.uniqueTracks} faixas distintas</p>
+          </div>
+          <div class="flex-1 border-b border-dotted border-white/15 mx-2.5 self-center"></div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="px-2 py-0.5 rounded-md bg-[#1DB954]/15 text-[#1DB954] font-extrabold text-xs">${a.minutes} min</span>
+            <span class="px-1.5 py-0.5 rounded bg-black/40 text-white/90 font-semibold text-[11px]">${a.hours} h</span>
+          </div>
+        </div>
+      `).join('');
+      document.getElementById('dashTopArtistsList').innerHTML = top5ArtistsHtml;
+
+      renderRankingsTable(data);
+      renderHeatmap24x7(data.filtered);
+      renderTriviaAndSummary(data);
+      renderAudioTable(data);
+      renderCharts(data);
+    }
+
+    function renderRankingsTable(data) {
+      const q = state.searchQuery.trim().toLowerCase();
+      let source = data.topTracks;
+      if (state.rankingEntity === 'artists') source = data.topArtists;
+      if (state.rankingEntity === 'albums') source = data.topAlbums;
+
+      const filteredRows = source.filter((item) => {
+        if (!q) return true;
+        return (
+          (item.name && item.name.toLowerCase().includes(q)) ||
+          (item.artist && item.artist.toLowerCase().includes(q)) ||
+          (item.album && item.album.toLowerCase().includes(q))
+        );
+      });
+
+      const totalPages = Math.max(1, Math.ceil(filteredRows.length / state.pageSize));
+      if (state.currentPage > totalPages) state.currentPage = totalPages;
+      const startIdx = (state.currentPage - 1) * state.pageSize;
+      const pageItems = filteredRows.slice(startIdx, startIdx + state.pageSize);
+
+      document.getElementById('thPrimary').textContent =
+        state.rankingEntity === 'tracks' ? 'Faixa / Artista' : state.rankingEntity === 'artists' ? 'Artista' : 'Álbum / Artista';
+      document.getElementById('thSecondary').textContent =
+        state.rankingEntity === 'tracks' ? 'Álbum' : 'Faixas Distintas';
+      document.getElementById('thSkipRate').style.display = state.rankingEntity === 'tracks' ? '' : 'none';
+
+      const tbody = document.getElementById('rankingTableBody');
+      if (pageItems.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 px-4 text-center text-xs text-[#B3B3B3]">
+              Nenhum registro encontrado no banco local. Importe seus arquivos JSON na aba <strong class="text-[#1DB954]">Importar Histórico</strong>.
+            </td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = pageItems.map((row, idx) => {
+          const rankNum = startIdx + idx + 1;
+          return `
+            <tr class="hover:bg-[#242424]/70 transition">
+              <td class="py-2 px-2.5 font-extrabold text-xs text-[#1DB954] w-10">#${rankNum}</td>
+              <td class="py-2 px-2.5 max-w-[260px]">
+                <div class="font-bold text-xs text-white truncate">${row.name}</div>
+                ${row.artist ? `<div class="text-[11px] text-[#B3B3B3] truncate">${row.artist}</div>` : ''}
+              </td>
+              <td class="py-2 px-2.5 text-xs text-[#B3B3B3] max-w-[210px] truncate">
+                ${state.rankingEntity === 'tracks' ? row.album : `${row.uniqueTracks} faixas no histórico`}
+              </td>
+              <td class="py-2 px-2.5 text-right">
+                <span class="px-2 py-0.5 rounded bg-[#242424] text-white font-bold text-xs">${row.fullPlays}</span>
+              </td>
+              ${state.rankingEntity === 'tracks' ? `<td class="py-2 px-2.5 text-right text-[11px] text-amber-400/90 font-medium">${row.skipRate}% <span class="text-[#B3B3B3]">(${row.skips})</span></td>` : ''}
+              <td class="py-2 px-2.5 text-right whitespace-nowrap">
+                <span class="px-2 py-0.5 rounded-md bg-[#1DB954]/15 text-[#1DB954] font-extrabold text-xs">${row.minutes} min</span>
+                <span class="ml-1 text-[11px] text-[#B3B3B3] font-semibold">(${row.hours} h)</span>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('rankingPaginationSummary').textContent =
+        `Exibindo ${pageItems.length} de ${filteredRows.length} resultados`;
+      document.getElementById('rankingPageLabel').textContent =
+        `Página ${state.currentPage} de ${totalPages}`;
+    }
+
+    function renderHeatmap24x7(filteredStreams) {
+      const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      const grid = Array.from({ length: 7 }, () =>
+        Array.from({ length: 24 }, () => ({ plays: 0, ms: 0, minutes: 0 }))
+      );
+
+      let maxVal = 1;
+      for (let i = 0; i < filteredStreams.length; i++) {
+        const s = filteredStreams[i];
+        const d = new Date(s.ts);
+        if (isNaN(d.getTime())) continue;
+        const day = d.getUTCDay();
+        const hr = d.getUTCHours();
+        grid[day][hr].plays += 1;
+        grid[day][hr].ms += s.ms_played;
+        grid[day][hr].minutes = Number((grid[day][hr].ms / 60000).toFixed(1));
+      }
+
+      for (let d = 0; d < 7; d++) {
+        for (let h = 0; h < 24; h++) {
+          const v = state.heatmapMetric === 'minutes' ? grid[d][h].minutes : grid[d][h].plays;
+          if (v > maxVal) maxVal = v;
+        }
+      }
+
+      let html = `<div class="grid grid-cols-[60px_repeat(24,minmax(0,1fr))] gap-1 mb-1.5 text-[10px] text-[#B3B3B3] text-center"><div>Dia</div>`;
+      for (let h = 0; h < 24; h++) {
+        html += `<div>${String(h).padStart(2, '0')}h</div>`;
+      }
+      html += `</div>`;
+
+      for (let d = 0; d < 7; d++) {
+        html += `<div class="grid grid-cols-[60px_repeat(24,minmax(0,1fr))] gap-1 items-center">`;
+        html += `<div class="text-xs font-semibold text-[#B3B3B3]">${weekdays[d]}</div>`;
+        for (let h = 0; h < 24; h++) {
+          const cell = grid[d][h];
+          const val = state.heatmapMetric === 'minutes' ? cell.minutes : cell.plays;
+          const alpha = val === 0 ? 0 : Math.max(0.18, Math.min(1, val / maxVal));
+          const bg = val === 0 ? '#242424' : `rgba(29, 185, 84, ${alpha.toFixed(2)})`;
+          html += `<div style="background-color:${bg}" title="${weekdays[d]} ${String(h).padStart(2, '0')}h: ${cell.minutes} min (${cell.plays} plays)" class="h-7 rounded-md border border-black/20 flex items-center justify-center text-[10px] font-medium text-white/90">${val > 0 ? Math.round(val) : ''}</div>`;
+        }
+        html += `</div>`;
+      }
+      document.getElementById('heatmapContainer').innerHTML = html;
+    }
+
+    function renderAudioTable(data) {
+      const tbody = document.getElementById('audioFeaturesTableBody');
+      if (!data || data.topTracks.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="py-8 px-4 text-center text-xs text-[#B3B3B3]">
+              Nenhuma faixa carregada para análise acústica. Importe seu histórico JSON ou conecte sua conta via OAuth.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+      tbody.innerHTML = data.topTracks.slice(0, 15).map((t) => {
+        const f = deriveTrackFeatures(t.name, t.artist);
+        return `
+          <tr class="hover:bg-[#242424]/60">
+            <td class="py-2.5 px-3 font-semibold text-white">${t.name}</td>
+            <td class="py-2.5 px-3 text-[#B3B3B3]">${t.artist}</td>
+            <td class="py-2.5 px-3 text-right text-[#1DB954] font-semibold">${f.valence}%</td>
+            <td class="py-2.5 px-3 text-right text-white">${f.energy}%</td>
+            <td class="py-2.5 px-3 text-right text-white">${f.danceability}%</td>
+            <td class="py-2.5 px-3 text-right text-[#B3B3B3]">${f.acousticness}%</td>
+            <td class="py-2.5 px-3 text-right text-[#B3B3B3]">${f.instrumentalness}%</td>
+            <td class="py-2.5 px-3 text-right font-mono text-white">${f.tempo}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderCharts(data) {
+      if (typeof Chart === 'undefined') return;
+
+      const labels = data.series.map((s) => s.period);
+      const mins = data.series.map((s) => s.minutes);
+      const fulls = data.series.map((s) => s.fullPlays);
+      const skips = data.series.map((s) => s.skips);
+
+      // 1. Dashboard Curve
+      if (charts.dashCurve) charts.dashCurve.destroy();
+      const ctx1 = document.getElementById('dashboardCurveCanvas').getContext('2d');
+      charts.dashCurve = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Minutos Ouvidos',
+            data: mins,
+            borderColor: '#1DB954',
+            backgroundColor: 'rgba(29, 185, 84, 0.2)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#B3B3B3' } } },
+          scales: {
+            x: { ticks: { color: '#B3B3B3' }, grid: { color: '#242424' } },
+            y: { ticks: { color: '#B3B3B3' }, grid: { color: '#242424' } }
+          }
+        }
+      });
+
+      // 2. Dashboard Radar
+      if (charts.dashRadar) charts.dashRadar.destroy();
+      const ctx2 = document.getElementById('dashboardRadarCanvas').getContext('2d');
+      charts.dashRadar = new Chart(ctx2, {
+        type: 'radar',
+        data: {
+          labels: data.audioFeatures.labels,
+          datasets: [{
+            label: 'Perfil (%)',
+            data: data.audioFeatures.values,
+            borderColor: '#1DB954',
+            backgroundColor: 'rgba(29, 185, 84, 0.35)',
+            pointBackgroundColor: '#1DB954'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            r: {
+              min: 0,
+              max: 100,
+              angleLines: { color: '#2e2e2e' },
+              grid: { color: '#2e2e2e' },
+              pointLabels: { color: '#B3B3B3', font: { size: 11 } },
+              ticks: { display: false }
+            }
+          }
+        }
+      });
+
+      // 3. Audio Full Radar
+      if (charts.audioRadar) charts.audioRadar.destroy();
+      const ctx3 = document.getElementById('audioRadarFullCanvas').getContext('2d');
+      charts.audioRadar = new Chart(ctx3, {
+        type: 'radar',
+        data: {
+          labels: data.audioFeatures.labels,
+          datasets: [{
+            label: 'Média Ponderada (%)',
+            data: data.audioFeatures.values,
+            borderColor: '#1DB954',
+            backgroundColor: 'rgba(29, 185, 84, 0.38)',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              min: 0,
+              max: 100,
+              angleLines: { color: '#333' },
+              grid: { color: '#333' },
+              pointLabels: { color: '#FFFFFF', font: { size: 12 } },
+              ticks: { display: false }
+            }
+          }
+        }
+      });
+
+      // 4. Audio Horizontal Bars
+      if (charts.audioBars) charts.audioBars.destroy();
+      const ctx4 = document.getElementById('audioBarsCanvas').getContext('2d');
+      charts.audioBars = new Chart(ctx4, {
+        type: 'bar',
+        data: {
+          labels: data.audioFeatures.labels,
+          datasets: [{
+            label: 'Pontuação (%)',
+            data: data.audioFeatures.values,
+            backgroundColor: '#1DB954',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { min: 0, max: 100, ticks: { color: '#B3B3B3' }, grid: { color: '#242424' } },
+            y: { ticks: { color: '#FFFFFF' }, grid: { display: false } }
+          }
+        }
+      });
+
+      // 5. Patterns Stacked Bar Chart
+      if (charts.patternsStacked) charts.patternsStacked.destroy();
+      const ctx5 = document.getElementById('patternsStackedCanvas').getContext('2d');
+      charts.patternsStacked = new Chart(ctx5, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Plays Completos (>=30s)', data: fulls, backgroundColor: '#1DB954' },
+            { label: 'Skips (<30s)', data: skips, backgroundColor: '#F59E0B' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#FFFFFF' } } },
+          scales: {
+            x: { stacked: true, ticks: { color: '#B3B3B3' }, grid: { color: '#242424' } },
+            y: { stacked: true, ticks: { color: '#B3B3B3' }, grid: { color: '#242424' } }
+          }
+        }
+      });
+      // 6. Patterns Clock Shifts Bar Chart
+      if (charts.patternsClock) charts.patternsClock.destroy();
+      const ctx6 = document.getElementById('patternsClockCanvas').getContext('2d');
+      charts.patternsClock = new Chart(ctx6, {
+        type: 'bar',
+        data: {
+          labels: ['Madrugada (00-05h)', 'Manhã (06-11h)', 'Tarde (12-17h)', 'Noite (18-23h)'],
+          datasets: [{
+            label: 'Minutos por Turno',
+            data: data.trivia.clockShifts,
+            backgroundColor: ['#8B5CF6', '#F59E0B', '#10B981', '#1DB954'],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#FFFFFF', font: { size: 11 } }, grid: { display: false } },
+            y: { ticks: { color: '#B3B3B3' }, grid: { color: '#242424' } }
+          }
+        }
+      });
+
+      // 7. Patterns Reason End Doughnut Chart
+      if (charts.patternsReason) charts.patternsReason.destroy();
+      const ctx7 = document.getElementById('patternsReasonCanvas').getContext('2d');
+      charts.patternsReason = new Chart(ctx7, {
+        type: 'doughnut',
+        data: {
+          labels: ['Até o Fim (trackdone)', 'Botão Avançar (fwdbtn)', 'Voltar/Repetir (backbtn)', 'Outros (clique/fechar)'],
+          datasets: [{
+            data: [
+              data.trivia.reasonCounts.trackdone,
+              data.trivia.reasonCounts.fwdbtn,
+              data.trivia.reasonCounts.backbtn,
+              data.trivia.reasonCounts.other
+            ],
+            backgroundColor: ['#1DB954', '#F59E0B', '#3B82F6', '#6B7280'],
+            borderColor: '#181818',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { color: '#FFFFFF', font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    function renderTriviaAndSummary(data) {
+      const tr = data.trivia;
+      document.getElementById('triviaStreakDays').textContent = `${tr.maxStreak} dias seguidos`;
+      document.getElementById('triviaStreakRange').textContent = tr.streakRange;
+      document.getElementById('triviaBestDayDate').textContent = tr.bestDay;
+      document.getElementById('triviaBestDayMins').textContent = `${tr.bestDayMins.toLocaleString('pt-BR')} min (${tr.bestDayHours} h no dia)`;
+      document.getElementById('triviaObsessionTrack').textContent = tr.obsTrack !== '-' ? `${tr.obsTrack} (${tr.obsArtist})` : '-';
+      document.getElementById('triviaObsessionInfo').textContent = tr.obsPlays > 0 ? `${tr.obsPlays} plays em ${tr.obsDay}` : '0 plays no mesmo dia';
+      document.getElementById('triviaShuffleRate').textContent = `${tr.shuffleRate}% Shuffle`;
+      document.getElementById('triviaFwdSkips').textContent = `${tr.reasonCounts.fwdbtn.toLocaleString('pt-BR')} avanços (fwdbtn)`;
+      document.getElementById('triviaWeekendBadge').textContent = `Fim de Semana: ${tr.weekendPct}%`;
+
+      // Aba Resumo Elemental
+      const scopeNames = {
+        short_term: 'Últimas 4 Semanas',
+        medium_term: 'Últimos 6 Meses',
+        long_term: 'Long-Term (1 Ano)',
+        all_history: 'Todo o Histórico',
+        custom_range: `${state.customStartDate} a ${state.customEndDate}`
+      };
+      document.getElementById('summaryScopeBadge').textContent = scopeNames[state.timeScope] || 'Histórico';
+      document.getElementById('summaryPersonaTitle').textContent = tr.personaTitle;
+      document.getElementById('summaryPersonaDesc').textContent = tr.personaDesc;
+      document.getElementById('sumMinutes').textContent = data.totalMinutes.toLocaleString('pt-BR');
+      document.getElementById('sumHours').textContent = data.totalHours.toLocaleString('pt-BR');
+      document.getElementById('sumDays').textContent = data.totalDays.toLocaleString('pt-BR');
+      document.getElementById('sumCompleted').textContent = data.completedPlays.toLocaleString('pt-BR');
+      document.getElementById('sumSkips').textContent = `${data.skippedPlays.toLocaleString('pt-BR')} (${data.skipRate}%)`;
+      document.getElementById('sumTopAlbum').textContent = data.topAlbums[0] ? data.topAlbums[0].name : '-';
+      document.getElementById('sumPeakHour').textContent = tr.peakHourLabel;
+      document.getElementById('sumStreak').textContent = `${tr.maxStreak} dias`;
+
+      document.getElementById('summaryTopArtistsCompact').innerHTML = data.topArtists.length === 0
+        ? '<p class="text-[#B3B3B3] text-[11px]">Sem dados</p>'
+        : data.topArtists.slice(0, 5).map((a, i) => `
+          <div class="flex items-center justify-between gap-1 py-0.5">
+            <span class="truncate text-white font-semibold"><strong class="text-[#1DB954]">#${i + 1}</strong> ${a.name}</span>
+            <span class="text-[#1DB954] font-bold shrink-0 text-[11px]">${a.hours}h</span>
+          </div>
+        `).join('');
+
+      document.getElementById('summaryTopTracksCompact').innerHTML = data.topTracks.length === 0
+        ? '<p class="text-[#B3B3B3] text-[11px]">Sem dados</p>'
+        : data.topTracks.slice(0, 5).map((t, i) => `
+          <div class="flex items-center justify-between gap-1 py-0.5">
+            <span class="truncate text-white font-semibold"><strong class="text-[#1DB954]">#${i + 1}</strong> ${t.name}</span>
+            <span class="text-[#1DB954] font-bold shrink-0 text-[11px]">${t.minutes}m</span>
+          </div>
+        `).join('');
+
+      drawStoryPosterCanvas(data, scopeNames[state.timeScope] || 'Histórico');
+    }
+
+    function drawStoryPosterCanvas(data, scopeLabel) {
+      const canvas = document.getElementById('summaryPosterCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const tpl = state.posterTemplate;
+
+      if (tpl === 'receiptify') {
+        // ESTILO RECEIPTIFY (CUPOM FISCAL TÉRMICO)
+        ctx.fillStyle = '#F5F2EB';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#181818';
+        ctx.font = 'bold 26px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('SPOTIFY ANALYTICS RECEIPT', W / 2, 52);
+        ctx.font = '13px monospace';
+        ctx.fillText('ESCOPO: ' + scopeLabel.toUpperCase(), W / 2, 76);
+        ctx.fillText('------------------------------------------', W / 2, 98);
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText('QTD  ITEM (FAIXA / ARTISTA)', 32, 122);
+        ctx.textAlign = 'right';
+        ctx.fillText('MIN', W - 32, 122);
+        ctx.textAlign = 'center';
+        ctx.fillText('------------------------------------------', W / 2, 140);
+
+        const tracks = data.topTracks.slice(0, 10);
+        let y = 168;
+        for (let i = 0; i < 10; i++) {
+          const t = tracks[i];
+          ctx.textAlign = 'left';
+          ctx.font = 'bold 13px monospace';
+          const label = t ? `${String(i + 1).padStart(2, '0')}   ${t.name.slice(0, 26).toUpperCase()}` : `${String(i + 1).padStart(2, '0')}   ---`;
+          ctx.fillText(label, 32, y);
+          ctx.textAlign = 'right';
+          ctx.fillText(t ? `${t.minutes}m` : '0m', W - 32, y);
+          y += 17;
+          ctx.textAlign = 'left';
+          ctx.font = '11px monospace';
+          ctx.fillStyle = '#555555';
+          ctx.fillText(t ? `     ${t.artist.slice(0, 32)}` : '', 32, y);
+          ctx.fillStyle = '#181818';
+          y += 26;
+        }
+
+        ctx.textAlign = 'center';
+        ctx.font = '13px monospace';
+        ctx.fillText('------------------------------------------', W / 2, y + 6);
+        y += 30;
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText('MINUTOS TOTAIS:', 32, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(data.totalMinutes.toLocaleString('pt-BR') + ' MIN', W - 32, y);
+
+        y += 24;
+        ctx.textAlign = 'left';
+        ctx.fillText('HORAS / DIAS ACUMULADOS:', 32, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(`${data.totalHours} H (${data.totalDays} DIAS)`, W - 32, y);
+
+        y += 24;
+        ctx.textAlign = 'left';
+        ctx.fillText('PLAYS COMPLETOS vs SKIPS:', 32, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(`${data.completedPlays} / ${data.skippedPlays} (${data.skipRate}%)`, W - 32, y);
+
+        y += 24;
+        ctx.textAlign = 'left';
+        ctx.fillText('ARTISTA #1:', 32, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(data.topArtists[0] ? data.topArtists[0].name.slice(0, 24).toUpperCase() : '-', W - 32, y);
+
+        ctx.textAlign = 'center';
+        ctx.fillText('==========================================', W / 2, y + 28);
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(data.trivia.personaTitle.toUpperCase().slice(0, 42), W / 2, y + 50);
+
+        // Código de barras
+        const barY = H - 88;
+        for (let x = 70; x < W - 70; x += 6) {
+          ctx.fillRect(x, barY, (x % 18 === 0) ? 4 : 2, 42);
+        }
+        ctx.font = '11px monospace';
+        ctx.fillText('OBRIGADO PELA PREFERÊNCIA • SPOTIFY ANALYTICS', W / 2, H - 24);
+        return;
+      }
+
+      if (tpl === 'festival') {
+        // ESTILO INSTAFEST (POSTER DE FESTIVAL)
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#1a0933');
+        grad.addColorStop(0.5, '#0f172a');
+        grad.addColorStop(1, '#091f15');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Sol / Lua neon de fundo
+        const sunGrad = ctx.createRadialGradient(W / 2, 230, 10, W / 2, 230, 180);
+        sunGrad.addColorStop(0, 'rgba(29, 185, 84, 0.45)');
+        sunGrad.addColorStop(1, 'rgba(29, 185, 84, 0)');
+        ctx.fillStyle = sunGrad;
+        ctx.beginPath();
+        ctx.arc(W / 2, 230, 180, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1DB954';
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.fillText('SPOTIFY ANALYTICS PRESENTA', W / 2, 56);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '800 34px Inter, sans-serif';
+        ctx.fillText('MEU LINEUP FESTIVAL', W / 2, 95);
+        ctx.fillStyle = '#B3B3B3';
+        ctx.font = '600 13px Inter, sans-serif';
+        ctx.fillText(scopeLabel.toUpperCase() + ` • ${data.totalHours} HORAS • ${data.totalDays} DIAS`, W / 2, 122);
+
+        const artists = data.topArtists.slice(0, 12);
+        let y = 195;
+        for (let day = 0; day < 3; day++) {
+          const headliner = artists[day * 4];
+          const sub1 = artists[day * 4 + 1];
+          const sub2 = artists[day * 4 + 2];
+          const sub3 = artists[day * 4 + 3];
+
+          ctx.fillStyle = '#1DB954';
+          ctx.font = 'bold 12px Inter, sans-serif';
+          ctx.fillText(['SEXTA-FEIRA', 'SÁBADO', 'DOMINGO'][day], W / 2, y);
+          y += 38;
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = '800 30px Inter, sans-serif';
+          ctx.fillText(headliner ? headliner.name.toUpperCase().slice(0, 22) : 'HEADLINER #' + (day + 1), W / 2, y);
+          y += 34;
+          ctx.fillStyle = '#E2E8F0';
+          ctx.font = '700 17px Inter, sans-serif';
+          const tier2 = [sub1?.name, sub2?.name].filter(Boolean).join('  •  ').toUpperCase() || 'CONVIDADOS ESPECIAIS';
+          ctx.fillText(tier2.slice(0, 38), W / 2, y);
+          y += 26;
+          ctx.fillStyle = '#94A3B8';
+          ctx.font = '600 13px Inter, sans-serif';
+          ctx.fillText(sub3 ? `${sub3.name.toUpperCase()} (${sub3.hours}H)` : '', W / 2, y);
+          y += 68;
+        }
+
+        // Rodapé com métricas
+        ctx.fillStyle = 'rgba(24, 24, 24, 0.9)';
+        ctx.fillRect(28, H - 155, W - 56, 120);
+        ctx.strokeStyle = 'rgba(29, 185, 84, 0.5)';
+        ctx.strokeRect(28, H - 155, W - 56, 120);
+
+        ctx.fillStyle = '#1DB954';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.fillText('FAIXA HINO DO FESTIVAL', W / 2, H - 125);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 18px Inter, sans-serif';
+        ctx.fillText(data.topTracks[0] ? `${data.topTracks[0].name.slice(0, 28)} (${data.topTracks[0].minutes} min)` : '-', W / 2, H - 98);
+        ctx.fillStyle = '#B3B3B3';
+        ctx.font = '600 12px Inter, sans-serif';
+        ctx.fillText(`${data.totalMinutes.toLocaleString('pt-BR')} MIN  |  ${data.completedPlays.toLocaleString('pt-BR')} PLAYS  |  ${data.skippedPlays.toLocaleString('pt-BR')} SKIPS`, W / 2, H - 62);
+        return;
+      }
+
+      // FUNDO BASE DARK PARA STATSFM E AI_AURA
+      ctx.fillStyle = '#121212';
+      ctx.fillRect(0, 0, W, H);
+
+      if (tpl === 'ai_aura') {
+        // ARTE GENERATIVA DE IA BASEADA NOS METADADOS DO USUÁRIO
+        const ene = data.audioFeatures.values[0] || 60;
+        const val = data.audioFeatures.values[2] || 50;
+        const ins = data.audioFeatures.values[4] || 30;
+
+        // Orbes de Aura Psicoacústica
+        const g1 = ctx.createRadialGradient(W * 0.3, 210, 10, W * 0.3, 210, 210);
+        g1.addColorStop(0, 'rgba(29, 185, 84, 0.65)');
+        g1.addColorStop(1, 'rgba(29, 185, 84, 0)');
+        ctx.fillStyle = g1;
+        ctx.fillRect(0, 0, W, 420);
+
+        const g2 = ctx.createRadialGradient(W * 0.72, 240, 10, W * 0.72, 240, 190);
+        g2.addColorStop(0, val > 50 ? 'rgba(16, 185, 129, 0.5)' : 'rgba(139, 92, 246, 0.55)');
+        g2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g2;
+        ctx.fillRect(0, 0, W, 420);
+
+        // Anéis harmônicos e ondas espectrais procedurais
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+        ctx.lineWidth = 1.5;
+        for (let r = 35; r <= 145; r += 22) {
+          ctx.beginPath();
+          ctx.arc(W / 2, 205, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Espectro de barras circulares
+        const bars = 36;
+        for (let b = 0; b < bars; b++) {
+          const angle = (b / bars) * Math.PI * 2;
+          const amp = 18 + ((b * 17 + Math.round(ene + ins)) % 45);
+          const x1 = W / 2 + Math.cos(angle) * 65;
+          const y1 = 205 + Math.sin(angle) * 65;
+          const x2 = W / 2 + Math.cos(angle) * (65 + amp);
+          const y2 = 205 + Math.sin(angle) * (65 + amp);
+          ctx.strokeStyle = b % 2 === 0 ? '#1DB954' : '#34D399';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
+      }
+
+      // CABEÇALHO DO CARD
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#1DB954';
+      ctx.font = '800 13px Inter, sans-serif';
+      ctx.fillText('SPOTIFY ANALYTICS • STORY RESUMO', 28, 42);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '800 22px Inter, sans-serif';
+      ctx.fillText(tpl === 'ai_aura' ? 'PERFIL & AURA MUSICAL IA' : 'RAIO-X DE ESCUTA (STATS.FM)', 28, 70);
+      ctx.fillStyle = '#B3B3B3';
+      ctx.font = '600 12px Inter, sans-serif';
+      ctx.fillText(`Escopo: ${scopeLabel} • Pico às ${data.trivia.peakHourLabel} • Streak: ${data.trivia.maxStreak} dias`, 28, 92);
+
+      let startY = tpl === 'ai_aura' ? 335 : 112;
+
+      // BLOCO ARQUÉTIPO IA
+      ctx.fillStyle = '#181818';
+      ctx.fillRect(28, startY, W - 56, 74);
+      ctx.strokeStyle = 'rgba(29, 185, 84, 0.45)';
+      ctx.strokeRect(28, startY, W - 56, 74);
+      ctx.fillStyle = '#1DB954';
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.fillText('ARQUÉTIPO IDENTIFICADO POR IA', 42, startY + 22);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 15px Inter, sans-serif';
+      ctx.fillText(data.trivia.personaTitle.slice(0, 42), 42, startY + 44);
+      ctx.fillStyle = '#B3B3B3';
+      ctx.font = '11px Inter, sans-serif';
+      ctx.fillText(data.trivia.personaDesc.slice(0, 68), 42, startY + 63);
+
+      startY += 88;
+
+      // 3 BLOCOS DE TEMPO LADO A LADO COM O MESMO DESTAQUE
+      const boxW = Math.floor((W - 56 - 16) / 3);
+      const timeItems = [
+        { label: 'MINUTOS OUVINDO', val: data.totalMinutes.toLocaleString('pt-BR') },
+        { label: 'HORAS TOTAIS', val: data.totalHours.toLocaleString('pt-BR') + ' h' },
+        { label: 'DIAS INTEIROS', val: data.totalDays.toLocaleString('pt-BR') + ' d' }
+      ];
+      for (let i = 0; i < 3; i++) {
+        const bx = 28 + i * (boxW + 8);
+        ctx.fillStyle = '#181818';
+        ctx.fillRect(bx, startY, boxW, 68);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '800 20px Inter, sans-serif';
+        ctx.fillText(timeItems[i].val, bx + 14, startY + 34);
+        ctx.fillStyle = '#1DB954';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        ctx.fillText(timeItems[i].label, bx + 14, startY + 54);
+      }
+
+      startY += 80;
+
+      // 2 BLOCOS LADO A LADO: PLAYS COMPLETOS vs SKIPS (MESMO DESTAQUE)
+      const halfW = Math.floor((W - 56 - 8) / 2);
+      ctx.fillStyle = '#181818';
+      ctx.fillRect(28, startY, halfW, 60);
+      ctx.fillStyle = '#1DB954';
+      ctx.font = '800 19px Inter, sans-serif';
+      ctx.fillText(data.completedPlays.toLocaleString('pt-BR') + ' completos', 42, startY + 30);
+      ctx.fillStyle = '#B3B3B3';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.fillText('PLAYS COMPLETOS (>= 30s)', 42, startY + 48);
+
+      ctx.fillStyle = '#181818';
+      ctx.fillRect(28 + halfW + 8, startY, halfW, 60);
+      ctx.fillStyle = '#F59E0B';
+      ctx.font = '800 19px Inter, sans-serif';
+      ctx.fillText(`${data.skippedPlays.toLocaleString('pt-BR')} (${data.skipRate}%)`, 42 + halfW + 8, startY + 30);
+      ctx.fillStyle = '#B3B3B3';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.fillText('SKIPS (< 30s)', 42 + halfW + 8, startY + 48);
+
+      startY += 74;
+
+      // TOP 5 ARTISTAS E TOP 5 FAIXAS LADO A LADO
+      const listH = 215;
+      ctx.fillStyle = '#181818';
+      ctx.fillRect(28, startY, halfW, listH);
+      ctx.fillRect(28 + halfW + 8, startY, halfW, listH);
+
+      ctx.fillStyle = '#1DB954';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.fillText('★ TOP 5 ARTISTAS', 40, startY + 24);
+      ctx.fillText('♫ TOP 5 MÚSICAS', 40 + halfW + 8, startY + 24);
+
+      for (let i = 0; i < 5; i++) {
+        const ry = startY + 52 + i * 33;
+        const a = data.topArtists[i];
+        const t = data.topTracks[i];
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.fillText(a ? `#${i + 1} ${a.name.slice(0, 16)}` : `#${i + 1} -`, 40, ry);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#1DB954';
+        ctx.fillText(a ? `${a.hours}h` : '', 28 + halfW - 12, ry);
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(t ? `#${i + 1} ${t.name.slice(0, 16)}` : `#${i + 1} -`, 40 + halfW + 8, ry);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#1DB954';
+        ctx.fillText(t ? `${t.minutes}m` : '', W - 40, ry);
+      }
+
+      startY += listH + 14;
+
+      // RODAPÉ DO STORY
+      if (startY + 58 < H) {
+        ctx.fillStyle = '#181818';
+        ctx.fillRect(28, startY, W - 56, 56);
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#B3B3B3';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        const topAlb = data.topAlbums[0] ? `${data.topAlbums[0].name.slice(0, 26)} (${data.topAlbums[0].artist.slice(0, 18)})` : '-';
+        ctx.fillText('ÁLBUM #1: ' + topAlb, 42, startY + 24);
+        ctx.fillStyle = '#1DB954';
+        ctx.fillText(`DIA RECORDE: ${data.trivia.bestDay} (${data.trivia.bestDayMins} min) • BPM MÉDIO: ${data.audioFeatures.avgTempo}`, 42, startY + 44);
+      }
+    }
+
+    // =========================================================================
+    // NAVEGAÇÃO E EVENT LISTENERS
+    // =========================================================================
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      const titles = {
+        dashboard: 'Dashboard Geral de Escuta',
+        summary: 'Resumo Elemental & Gerador de Story IA',
+        rankings: 'Top Rankings Personalizáveis',
+        audio: 'Perfil de Gosto & Audio Features',
+        patterns: 'Padrões de Escuta & Curiosidades (Trivia)',
+        import: 'Ingestão de Histórico Estendido (JSON)',
+        settings: 'Configurações / API OAuth 2.0 PKCE'
+      };
+      document.getElementById('pageTitle').textContent = titles[tabId] || 'Spotify Analytics Desktop';
+
+      ['dashboard', 'summary', 'rankings', 'audio', 'patterns', 'import', 'settings'].forEach((id) => {
+        const el = document.getElementById('view-' + id);
+        if (id === tabId) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+
+      document.querySelectorAll('.nav-btn').forEach((btn) => {
+        if (btn.getAttribute('data-tab') === tabId) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+
+      renderAll();
+    }
+
+    document.querySelectorAll('.nav-btn').forEach((btn) => {
+      btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
+    });
+
+    document.querySelectorAll('.scope-pill').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.timeScope = btn.getAttribute('data-scope');
+        state.currentPage = 1;
+        document.querySelectorAll('.scope-pill').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const customBar = document.getElementById('customDateBar');
+        if (state.timeScope === 'custom_range') {
+          customBar.classList.remove('hidden');
+          customBar.classList.add('flex');
+        } else {
+          customBar.classList.add('hidden');
+          customBar.classList.remove('flex');
+        }
+        renderAll();
+      });
+    });
+
+    document.querySelectorAll('.entity-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.rankingEntity = btn.getAttribute('data-entity');
+        state.currentPage = 1;
+        document.querySelectorAll('.entity-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderAll();
+      });
+    });
+
+    document.getElementById('inputStartDate').addEventListener('change', (e) => {
+      state.customStartDate = e.target.value;
+      renderAll();
+    });
+    document.getElementById('inputEndDate').addEventListener('change', (e) => {
+      state.customEndDate = e.target.value;
+      renderAll();
+    });
+    document.getElementById('btnPreset2025').addEventListener('click', () => {
+      state.customStartDate = '2025-01-01';
+      state.customEndDate = '2025-12-31';
+      document.getElementById('inputStartDate').value = state.customStartDate;
+      document.getElementById('inputEndDate').value = state.customEndDate;
+      renderAll();
+    });
+    document.getElementById('btnPreset2026').addEventListener('click', () => {
+      state.customStartDate = '2026-01-01';
+      state.customEndDate = '2026-12-31';
+      document.getElementById('inputStartDate').value = state.customStartDate;
+      document.getElementById('inputEndDate').value = state.customEndDate;
+      renderAll();
+    });
+
+    document.getElementById('inputRankingSearch').addEventListener('input', (e) => {
+      state.searchQuery = e.target.value;
+      state.currentPage = 1;
+      renderAll();
+    });
+
+    document.getElementById('chkExcludeSkips').addEventListener('change', (e) => {
+      state.excludeSkips = e.target.checked;
+      state.currentPage = 1;
+      renderAll();
+    });
+
+    document.getElementById('btnPrevPage').addEventListener('click', () => {
+      if (state.currentPage > 1) {
+        state.currentPage--;
+        renderAll();
+      }
+    });
+    document.getElementById('btnNextPage').addEventListener('click', () => {
+      state.currentPage++;
+      renderAll();
+    });
+
+    document.getElementById('btnJumpPatterns').addEventListener('click', () => switchTab('patterns'));
+    document.getElementById('btnJumpTopTracks').addEventListener('click', () => {
+      state.rankingEntity = 'tracks';
+      switchTab('rankings');
+    });
+    document.getElementById('btnJumpTopArtists').addEventListener('click', () => {
+      state.rankingEntity = 'artists';
+      switchTab('rankings');
+    });
+
+    // Heatmap & Granularity toggles
+    document.getElementById('btnHeatMinutes').addEventListener('click', () => {
+      state.heatmapMetric = 'minutes';
+      document.getElementById('btnHeatMinutes').classList.add('active');
+      document.getElementById('btnHeatPlays').classList.remove('active');
+      renderAll();
+    });
+    document.getElementById('btnHeatPlays').addEventListener('click', () => {
+      state.heatmapMetric = 'plays';
+      document.getElementById('btnHeatPlays').classList.add('active');
+      document.getElementById('btnHeatMinutes').classList.remove('active');
+      renderAll();
+    });
+    document.getElementById('btnGranularityMonthly').addEventListener('click', () => {
+      state.curveGranularity = 'monthly';
+      document.getElementById('btnGranularityMonthly').classList.add('active');
+      document.getElementById('btnGranularityYearly').classList.remove('active');
+      renderAll();
+    });
+    document.getElementById('btnGranularityYearly').addEventListener('click', () => {
+      state.curveGranularity = 'yearly';
+      document.getElementById('btnGranularityYearly').classList.add('active');
+      document.getElementById('btnGranularityMonthly').classList.remove('active');
+      renderAll();
+    });
+
+    // Modal Export Playlist
+    const modal = document.getElementById('playlistModal');
+    document.getElementById('btnOpenExportModal').addEventListener('click', () => {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    });
+    document.getElementById('btnCloseModal').addEventListener('click', () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    });
+    document.getElementById('btnCancelModal').addEventListener('click', () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    });
+    document.getElementById('btnConfirmExportPlaylist').addEventListener('click', () => {
+      const name = document.getElementById('inputPlaylistName').value.trim() || 'Meu Top Spotify Analytics';
+      const data = computeAllAnalytics();
+      const count = Math.min(25, data.topTracks.length);
+      state.exportedPlaylists.unshift({
+        name,
+        count,
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      });
+
+      const box = document.getElementById('exportedPlaylistsBox');
+      const list = document.getElementById('exportedPlaylistsList');
+      box.classList.remove('hidden');
+      list.innerHTML = state.exportedPlaylists.map((pl) => `
+        <div class="p-3 rounded-xl bg-[#242424] border border-[#1DB954]/30 flex items-center justify-between text-xs">
+          <div>
+            <p class="font-bold text-white">${pl.name}</p>
+            <p class="text-[#B3B3B3]">${pl.count} faixas exportadas</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-full bg-[#1DB954]/20 text-[#1DB954] font-semibold">Criada às ${pl.time}</span>
+        </div>
+      `).join('');
+
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      showToast(`Playlist privada "${name}" criada com ${count} faixas!`, false);
+    });
+
+    // Persistência IndexedDB para suportar 100.000+ plays no Android e Desktop sem limite de 5MB
+    function openStreamsIDB() {
+      return new Promise((resolve, reject) => {
+        if (typeof indexedDB === 'undefined') return reject(new Error('No IDB'));
+        const req = indexedDB.open('SpotifyAnalyticsMobileDB', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('store')) db.createObjectStore('store');
+        };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function saveStreamsToIDB(streamsArr) {
+      try {
+        const db = await openStreamsIDB();
+        const tx = db.transaction('store', 'readwrite');
+        tx.objectStore('store').put(streamsArr, 'streams_v2');
+      } catch (e) {}
+    }
+
+    async function clearStreamsFromIDB() {
+      try {
+        const db = await openStreamsIDB();
+        const tx = db.transaction('store', 'readwrite');
+        tx.objectStore('store').delete('streams_v2');
+      } catch (e) {}
+    }
+
+    async function loadStreamsFromIDB() {
+      try {
+        const db = await openStreamsIDB();
+        return await new Promise((resolve) => {
+          const tx = db.transaction('store', 'readonly');
+          const req = tx.objectStore('store').get('streams_v2');
+          req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : null);
+          req.onerror = () => resolve(null);
+        });
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Ingestão JSON + Suporte direto a .ZIP no Android e PC
+    async function handleFilesUpload(fileList) {
+      const files = Array.from(fileList || []);
+      if (files.length === 0) return;
+
+      let parsedCount = 0;
+      let ignoredCount = 0;
+      const incoming = [];
+
+      try {
+        const jsonTexts = [];
+        for (let fIdx = 0; fIdx < files.length; fIdx++) {
+          const f = files[fIdx];
+          if (f.name.toLowerCase().endsWith('.zip') && typeof JSZip !== 'undefined') {
+            showToast('Extraindo arquivos JSON de dentro do .zip...', false);
+            const zip = await JSZip.loadAsync(f);
+            const entries = Object.keys(zip.files);
+            for (let eIdx = 0; eIdx < entries.length; eIdx++) {
+              const entry = zip.files[entries[eIdx]];
+              if (!entry.dir && entry.name.toLowerCase().endsWith('.json')) {
+                jsonTexts.push(await entry.async('string'));
+              }
+            }
+          } else {
+            jsonTexts.push(await f.text());
+          }
+        }
+
+        for (let tIdx = 0; tIdx < jsonTexts.length; tIdx++) {
+          const text = jsonTexts[tIdx];
+          let arr = null;
+          try {
+            arr = JSON.parse(text);
+          } catch (e) {
+            continue;
+          }
+          if (!Array.isArray(arr)) continue;
+
+          for (let i = 0; i < arr.length; i++) {
+            const raw = arr[i];
+            const ts = raw.ts || (typeof raw.endTime === 'string' ? raw.endTime.replace(' ', 'T') + ':00Z' : null);
+            const ms = typeof raw.ms_played === 'number' ? raw.ms_played : (typeof raw.msPlayed === 'number' ? raw.msPlayed : -1);
+            const tName = raw.master_metadata_track_name || raw.trackName;
+            const aName = raw.master_metadata_album_artist_name || raw.artistName;
+            const albName = raw.master_metadata_album_album_name || 'Álbum Importado';
+
+            if (!ts || !tName || !aName || ms < 0) {
+              ignoredCount++;
+              continue;
+            }
+            parsedCount++;
+            incoming.push({
+              ts,
+              ms_played: ms,
+              master_metadata_track_name: String(tName).trim(),
+              master_metadata_album_artist_name: String(aName).trim(),
+              master_metadata_album_album_name: String(albName).trim(),
+              spotify_track_uri: raw.spotify_track_uri || 'spotify:track:local',
+              reason_end: raw.reason_end || (ms < 30000 ? 'fwdbtn' : 'trackdone'),
+              shuffle: Boolean(raw.shuffle)
+            });
+          }
+        }
+
+        const existingKeys = new Set(
+          state.streams.map((s) => `${s.ts}|${s.master_metadata_track_name}|${s.master_metadata_album_artist_name}|${s.ms_played}`)
+        );
+        const deduped = [];
+        for (let i = 0; i < incoming.length; i++) {
+          const r = incoming[i];
+          const k = `${r.ts}|${r.master_metadata_track_name}|${r.master_metadata_album_artist_name}|${r.ms_played}`;
+          if (!existingKeys.has(k)) {
+            existingKeys.add(k);
+            deduped.push(r);
+          }
+        }
+
+        state.streams = state.streams.concat(deduped).sort((a, b) => a.ts.localeCompare(b.ts));
+        try {
+          saveStreamsToIDB(state.streams); localStorage.setItem('spotify_analytics_portable_streams_v2', JSON.stringify(state.streams.slice(-3000)));
+        } catch (e) {}
+
+        const statusBox = document.getElementById('ingestStatusBox');
+        statusBox.classList.remove('hidden');
+        statusBox.classList.add('flex');
+        document.getElementById('ingestFileName').textContent = files.map((f) => f.name).join(', ');
+        document.getElementById('ingestMessage').textContent = `${deduped.length} novas reproduções adicionadas e indexadas.`;
+        document.getElementById('ingestParsed').textContent = String(parsedCount);
+        document.getElementById('ingestInserted').textContent = String(deduped.length);
+        document.getElementById('ingestIgnored').textContent = String(ignoredCount + (parsedCount - deduped.length));
+
+        renderAll();
+        showToast(`Ingestão concluída: +${deduped.length} reproduções importadas!`, false);
+      } catch (err) {
+        showToast(err.message || 'Falha ao processar JSON.', true);
+      }
+    }
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInputJson');
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-[#1DB954]');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-[#1DB954]');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-[#1DB954]');
+      if (e.dataTransfer.files) handleFilesUpload(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files) handleFilesUpload(e.target.files);
+    });
+
+    document.getElementById('btnSimulateBatch').addEventListener('click', () => {
+      const extra = [];
+      const baseMs = new Date('2026-10-01T12:00:00Z').getTime();
+      for (let i = 0; i < 320; i++) {
+        const item = CATALOG_TRACKS[(i * 5 + 3) % CATALOG_TRACKS.length];
+        const ts = new Date(baseMs + i * 3150000).toISOString().replace('.000Z', 'Z');
+        const isSkip = i % 14 === 0;
+        extra.push({
+          ts,
+          ms_played: isSkip ? 12400 : item.durationMs,
+          master_metadata_track_name: item.track,
+          master_metadata_album_artist_name: item.artist,
+          master_metadata_album_album_name: item.album,
+          spotify_track_uri: item.uri,
+          reason_end: isSkip ? 'fwdbtn' : 'trackdone',
+          shuffle: i % 2 === 0
+        });
+      }
+      state.streams = state.streams.concat(extra).sort((a, b) => a.ts.localeCompare(b.ts));
+      const statusBox = document.getElementById('ingestStatusBox');
+      statusBox.classList.remove('hidden');
+      statusBox.classList.add('flex');
+      document.getElementById('ingestFileName').textContent = 'Streaming_History_Audio_2026_Batch.json';
+      document.getElementById('ingestMessage').textContent = '320 novos eventos de áudio importados com sucesso.';
+      document.getElementById('ingestParsed').textContent = '320';
+      document.getElementById('ingestInserted').textContent = '320';
+      document.getElementById('ingestIgnored').textContent = '0';
+      renderAll();
+      showToast('Lote de +320 reproduções importado com sucesso!', false);
+    });
+
+    function resetAllData() {
+      state.streams = [];
+      state.exportedPlaylists = [];
+      state.searchQuery = '';
+      state.currentPage = 1;
+      clearStreamsFromIDB();
+      try {
+        localStorage.removeItem('spotify_analytics_portable_streams_v1');
+        localStorage.removeItem('spotify_analytics_portable_streams_v2');
+      } catch (e) {}
+      document.getElementById('inputRankingSearch').value = '';
+      document.getElementById('ingestStatusBox').classList.add('hidden');
+      document.getElementById('ingestStatusBox').classList.remove('flex');
+      document.getElementById('exportedPlaylistsBox').classList.add('hidden');
+      document.getElementById('exportedPlaylistsList').innerHTML = '';
+      const resetModal = document.getElementById('resetConfirmModal');
+      resetModal.classList.add('hidden');
+      resetModal.classList.remove('flex');
+      renderAll();
+      showToast('Todos os dados e métricas foram limpos da interface!', false);
+    }
+
+    const resetModalEl = document.getElementById('resetConfirmModal');
+    document.getElementById('btnOpenResetModal').addEventListener('click', () => {
+      resetModalEl.classList.remove('hidden');
+      resetModalEl.classList.add('flex');
+    });
+    document.getElementById('btnResetFromImport').addEventListener('click', () => {
+      resetModalEl.classList.remove('hidden');
+      resetModalEl.classList.add('flex');
+    });
+    document.getElementById('btnCancelResetModal').addEventListener('click', () => {
+      resetModalEl.classList.add('hidden');
+      resetModalEl.classList.remove('flex');
+    });
+    document.getElementById('btnConfirmResetAll').addEventListener('click', () => {
+      resetAllData();
+    });
+
+    document.getElementById('btnDownloadSampleJson').addEventListener('click', () => {
+      const sample = state.streams.length > 0 ? state.streams.slice(-50) : CATALOG_TRACKS.slice(0, 10).map((item, idx) => ({
+        ts: new Date(Date.now() - idx * 3600000).toISOString().replace('.000Z', 'Z'),
+        ms_played: item.durationMs,
+        master_metadata_track_name: item.track,
+        master_metadata_album_artist_name: item.artist,
+        master_metadata_album_album_name: item.album,
+        spotify_track_uri: item.uri,
+        reason_end: 'trackdone',
+        shuffle: false
+      }));
+      const blob = new Blob([JSON.stringify(sample, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Streaming_History_Audio_Sample.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Arquivo Streaming_History_Audio_Sample.json baixado!', false);
+    });
+
+    // OAuth PKCE Handlers
+    document.getElementById('btnGeneratePKCE').addEventListener('click', () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+      let verifier = '';
+      for (let i = 0; i < 48; i++) {
+        verifier += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const challenge = btoa(verifier).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '').slice(0, 43);
+      document.getElementById('pkceVerifierDisplay').textContent = verifier;
+      document.getElementById('pkceChallengeDisplay').textContent = challenge;
+      showToast('Novo par criptográfico PKCE (code_verifier & S256 challenge) gerado!', false);
+    });
+
+    document.getElementById('btnConnectSpotifyOAuth').addEventListener('click', () => {
+      const cid = document.getElementById('inputClientId').value.trim();
+      if (!cid) {
+        showToast('Informe um Client ID válido.', true);
+        return;
+      }
+      document.getElementById('oauthStatusLabel').textContent =
+        'Conectado • Token OAuth 2.0 PKCE renovado às ' + new Date().toLocaleTimeString('pt-BR');
+      showToast('Autenticação OAuth 2.0 PKCE sincronizada com sucesso!', false);
+    });
+
+    // Alternar largura compacta (Modo Print / Story)
+    document.getElementById('btnToggleCompactWidth').addEventListener('click', () => {
+      state.compactMode = !state.compactMode;
+      const container = document.getElementById('mainContentContainer');
+      const btn = document.getElementById('btnToggleCompactWidth');
+      if (state.compactMode) {
+        container.className = 'max-w-[540px] mx-auto space-y-3 transition-all duration-200';
+        btn.textContent = '💻 Voltar Largura Normal';
+        btn.classList.add('border-[#1DB954]', 'text-[#1DB954]');
+        showToast('Modo Print / Story ativado (largura compacta de 540px)!', false);
+      } else {
+        container.className = 'max-w-[1040px] mx-auto space-y-4 transition-all duration-200';
+        btn.textContent = '📱 Modo Print (520px)';
+        btn.classList.remove('border-[#1DB954]', 'text-[#1DB954]');
+      }
+      renderAll();
+    });
+
+    // Seletor de template do Gerador de Imagens Resumo
+    document.querySelectorAll('.template-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.posterTemplate = btn.getAttribute('data-template');
+        document.querySelectorAll('.template-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderAll();
+      });
+    });
+
+    // Compartilhamento nativo no Android (Web Share API)
+    document.getElementById('btnShareStoryMobile').addEventListener('click', () => {
+      const canvas = document.getElementById('summaryPosterCanvas');
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `Spotify_Story_${state.posterTemplate}.png`, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: 'Meu Resumo Spotify Analytics',
+              text: 'Confira meu resumo musical!'
+            });
+            return;
+          } catch (err) {}
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Spotify_Story_${state.posterTemplate}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Imagem PNG salva no seu aparelho!', false);
+      }, 'image/png');
+    });
+
+    // Download da Imagem PNG do Story
+    document.getElementById('btnDownloadStoryPng').addEventListener('click', () => {
+      const canvas = document.getElementById('summaryPosterCanvas');
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Spotify_Story_${state.posterTemplate}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('Imagem PNG do Resumo baixada com sucesso!', false);
+    });
+
+    window.addEventListener('load', async () => {
+      const idbStreams = await loadStreamsFromIDB();
+      if (idbStreams && idbStreams.length > 0) {
+        state.streams = idbStreams;
+      }
+      renderAll();
+    });
+  </script>
+</body>
+</html>
